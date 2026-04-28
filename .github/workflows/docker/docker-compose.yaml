@@ -1,0 +1,69 @@
+services:
+  trinity-node-1:
+    image: trinity-rft-unittest:20260126
+    cap_add:
+      - SYS_PTRACE
+    pull_policy: never
+    command: bash -c "source /opt/venv/bin/activate && uv pip install -e .[dev] && ray start --head --dashboard-host 0.0.0.0 --include-dashboard true --block"
+    environment:
+      - HF_ENDPOINT=https://hf-mirror.com
+      - RAY_ADDRESS=auto
+      - TRINITY_CHECKPOINT_ROOT_DIR=/mnt/checkpoints
+      - TRINITY_TASKSET_PATH=/mnt/data
+      - TRINITY_EVAL_TASKSET_PATH=/mnt/data
+      - TRINITY_SFT_DATASET_PATH=/mnt/data
+      - TRINITY_MODEL_PATH=/mnt/models/Qwen3-0.6B
+      - TRINITY_API_MODEL_PATH=/mnt/models/Qwen3-1.7B
+      - TRINITY_VLM_MODEL_PATH=/mnt/models/Qwen2.5-VL-3B
+      - VIRTUAL_ENV=/opt/venv
+    working_dir: /workspace
+    networks:
+      - trinity-network
+    volumes:
+      - trinity-volume:/mnt
+      - ../../..:/workspace
+    shm_size: "64G"
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            device_ids: ['4', '5']
+            capabilities: [gpu]
+
+  trinity-node-2:
+    image: trinity-rft-unittest:20260126
+    cap_add:
+      - SYS_PTRACE
+    pull_policy: never
+    command: bash -c "source /opt/venv/bin/activate && uv pip install -e .[dev] && ray start --address=trinity-node-1:6379 --block"
+    environment:
+      - HF_ENDPOINT=https://hf-mirror.com
+      - TRINITY_CHECKPOINT_ROOT_DIR=/mnt/checkpoints
+      - TRINITY_TASKSET_PATH=/mnt/data
+      - TRINITY_MODEL_PATH=/mnt/models/Qwen3-1.7B
+      - VIRTUAL_ENV=/opt/venv
+    working_dir: /workspace
+    volumes:
+      - trinity-volume:/mnt
+      - ../../..:/workspace
+    depends_on:
+      - trinity-node-1
+    networks:
+      - trinity-network
+    shm_size: "64G"
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            device_ids: ['6', '7']
+            capabilities: [gpu]
+
+networks:
+  trinity-network:
+    driver: bridge
+
+volumes:
+  trinity-volume:
+    external: true
