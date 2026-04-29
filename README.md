@@ -108,22 +108,138 @@ If you do not use GPU/flash-attn, adjust installation based on your runtime envi
 
 ---
 
-## Before Running
+## Environment Setup
 
-All example YAMLs use placeholder paths. You must update them first.
-
-At minimum, check these fields in the selected config:
+All example YAMLs use placeholder paths. You must update them first. At minimum, check these fields in the selected config:
 
 - `model.model_path` (student model)
 - `explorer.auxiliary_models[0].model_path` (teacher model)
 - `buffer.explorer_input.taskset.path` (train data)
 - `buffer.explorer_input.eval_tasksets[*].path` (eval data, if enabled)
 
-Some workflows also require environment-specific local setup:
+Environment-specific setup instructions are below.
 
-- **ALFWorld**: install `alfworld` and its runtime dependencies
-- **WebShop**: set your local `webshop` path in workflow files if needed
-- **ScienceWorld**: ensure local ScienceWorld runtime/jar is available
+### ALFWorld
+
+**Step 1: Install alfworld**
+
+```bash
+pip install alfworld
+```
+
+**Step 2: Download data**
+
+```bash
+# Option 1: Auto download to ~/.cache/alfworld/
+alfworld-download
+
+# Option 2: Specify download path
+alfworld-download --data-dir ./alf-data
+```
+
+**Step 3: Configure data path**
+
+Edit `TCOD_examples/alfworld/get_alfworld_data.py`:
+
+```python
+# Modify to your actual data path
+alfworld_data_root = "/your/local/path/alfworld/json_2.1.1"
+```
+
+> **Note**: Keep `json_2.1.1` at the end of the path.
+
+**Step 4: Process data**
+
+```bash
+cd TCOD_examples/alfworld
+python get_alfworld_data.py
+```
+
+Processed data will be saved to `TCOD_examples/alfworld/alfworld_data/`.
+
+---
+
+### WebShop
+
+> **Note**: WebShop requires ~1TB memory. Skip if resources are limited.
+
+**Step 1: Clone WebShop repository**
+
+```bash
+git clone https://github.com/princeton-nlp/webshop.git webshop
+cd webshop
+```
+
+**Step 2: Install Java 17+**
+
+```bash
+# Using conda
+conda install -c conda-forge openjdk=17
+```
+
+**Step 3: Run setup script**
+
+```bash
+# Small dataset (recommended for testing)
+./setup.sh -d small
+
+# Full dataset
+./setup.sh -d all
+```
+
+Note that some Python dependencies may conflict — install them individually if needed.
+
+**Step 4: Process data**
+
+```bash
+cd TCOD_examples/webshop
+python get_webshop_data.py
+```
+
+**Step 5: Configure WebShop path**
+
+Option A: Set environment variable
+
+```bash
+export WEBSHOP_PATH=/path/to/webshop
+```
+
+Option B: Modify workflow files directly
+
+Edit path in all WebShop workflow files (`trinity/common/workflows/envs/TCOD/webshop/*.py`):
+
+```python
+# Find this line and update the path
+sys.path.append("/your/path/to/webshop")
+```
+
+---
+
+### ScienceWorld
+
+**Step 1: Clone and install ScienceWorld**
+
+```bash
+git clone https://github.com/allenai/ScienceWorld.git
+cd ScienceWorld
+pip install .
+```
+
+**Step 2: Configure jar path**
+
+Edit `TCOD_examples/scienceworld/get_sciworld_data.py`:
+
+```python
+# Set the jar path to your ScienceWorld directory
+jar_path = "/your/path/ScienceWorld/scienceworld/scienceworld.jar"
+```
+
+**Step 3: Process data**
+
+```bash
+cd TCOD_examples/scienceworld
+python get_sciworld_data.py
+```
 
 ---
 
