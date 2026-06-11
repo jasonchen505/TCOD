@@ -13,7 +13,7 @@ from trinity.common.workflows.envs.TCOD.scienceworld.utils import (
     SCIWORLD_TEMPLATE_NO_HIS,
     _create_scienceworld_env,
     _format_history,
-    _get_admissible_commands,
+    _get_compact_action_info,
     _reset_scienceworld_env,
     format_observation,
     parse_action,
@@ -102,16 +102,18 @@ class OnPolicyDistillVerlAgentScienceworldWorkflow(Workflow):
 
         for r in range(self.max_env_steps):
             format_obs = format_observation(observation)
-            admissible_commands = _get_admissible_commands(info)
-            reformatted_admissible = "\n ".join(
-                f"'{s}'" for s in admissible_commands if s != "help"
+            action_templates, objects = _get_compact_action_info(env)
+            reformatted_actions = ", ".join(
+                f"'{s}'" for s in action_templates if s != "help"
             )
+            reformatted_objects = ", ".join(f"'{s}'" for s in objects)
 
             if len(history) < HISTORY_LENGTH:
                 user_content = SCIWORLD_TEMPLATE_NO_HIS.format(
                     task_description=task_description,
                     current_observation=format_obs,
-                    admissible_actions=reformatted_admissible,
+                    action_templates=reformatted_actions,
+                    objects=reformatted_objects,
                 )
             else:
                 action_history_str = "\n".join(history[-HISTORY_LENGTH:])
@@ -122,7 +124,8 @@ class OnPolicyDistillVerlAgentScienceworldWorkflow(Workflow):
                     action_history=action_history_str,
                     current_step=r + 1,
                     current_observation=format_obs,
-                    admissible_actions=reformatted_admissible,
+                    action_templates=reformatted_actions,
+                    objects=reformatted_objects,
                 )
 
             memory = memory + [{"role": "user", "content": user_content}]

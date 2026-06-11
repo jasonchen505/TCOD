@@ -13,9 +13,10 @@ Do not talk to the user. Solve the task by interacting with the environment.
 SCIWORLD_TEMPLATE_NO_HIS = """
 Your ScienceWorld task is: {task_description}
 Your current observation is: {current_observation}
-Your valid actions of the current situation are: [{admissible_actions}].
+Available action commands: [{action_templates}]
+Available objects you can interact with: [{objects}]
 
-Now it's your turn to take an action.
+Now it's your turn to take an action. Combine an action command with appropriate object(s) to form a valid action.
 You should first reason step-by-step about the current situation. This reasoning process MUST be enclosed within <think> </think> tags.
 Once you've finished your reasoning, you should choose a valid action for the current step and present it within <action> </action> tags.
 """
@@ -24,9 +25,10 @@ SCIWORLD_TEMPLATE = """
 Your ScienceWorld task is: {task_description}
 Prior to this step, you have already taken {step_count} step(s). Below are the most recent {history_length} observations and the corresponding actions you took: {action_history}
 You are now at step {current_step} and your current observation is: {current_observation}
-Your valid actions of the current situation are: [{admissible_actions}].
+Available action commands: [{action_templates}]
+Available objects you can interact with: [{objects}]
 
-Now it's your turn to take an action.
+Now it's your turn to take an action. Combine an action command with appropriate object(s) to form a valid action.
 You should first reason step-by-step about the current situation. This reasoning process MUST be enclosed within <think> </think> tags.
 Once you've finished your reasoning, you should choose a valid action for the current step and present it within <action> </action> tags.
 """
@@ -71,6 +73,32 @@ def _get_admissible_commands(info: Dict[str, Any]) -> List[str]:
     if commands and isinstance(commands[0], list):
         commands = commands[0]
     return [cmd for cmd in commands if cmd]
+
+
+def _get_compact_action_info(env) -> Tuple[List[str], List[str]]:
+    """Get compact action representation: templates + objects separately.
+
+    ScienceWorld's get_valid_action_object_combinations() returns ~1162 full
+    combinations per step, which easily exceeds token limits. Instead, we use
+    get_possible_actions() (~23 templates) and get_possible_objects() (~20 objects)
+    which together are ~50 items — about 25x smaller.
+    """
+    try:
+        actions = env.get_possible_actions()
+    except AttributeError:
+        actions = env.getPossibleActions()
+
+    try:
+        objects = env.get_possible_objects()
+    except AttributeError:
+        objects = env.getPossibleObjects()
+
+    if isinstance(actions, str):
+        actions = [actions] if actions else []
+    if isinstance(objects, str):
+        objects = [objects] if objects else []
+
+    return actions, objects
 
 
 def _create_scienceworld_env(
