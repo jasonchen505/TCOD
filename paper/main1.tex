@@ -1,0 +1,1798 @@
+
+\documentclass{article} % For LaTeX2e
+\usepackage[preprint]{colm2026_conference}
+\usepackage{etoc}
+\usepackage[most]{tcolorbox}
+\usepackage{microtype}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amsthm}
+\newtheorem{lemma}{Lemma}
+\newtheorem{theorem}{Theorem}
+\newtheorem{remark}{Remark}
+\usepackage{booktabs}   % \toprule \midrule \bottomrule \cmidrule
+\usepackage{multirow}   % \multirow
+\usepackage{graphicx}   % \resizebox
+\usepackage{subcaption} % subfigure support
+\usepackage[ruled,linesnumbered]{algorithm2e}
+\usepackage[most]{tcolorbox}
+\usepackage{minted}
+\usepackage{wrapfig}
+\usepackage{xcolor}
+\usepackage{colortbl}
+\usepackage{pifont}
+% \usepackage{algorithm}
+\usepackage{algorithmic}
+\newcommand{\cmark}{\ding{51}}
+\newcommand{\xmark}{\ding{55}}
+\definecolor{richpurple}{RGB}{75,46,131}
+\definecolor{beige}{RGB}{245,245,220}
+
+\newcommand{\purplecomic}[1]{%
+  {\color{richpurple}\selectfont #1}%
+}
+\definecolor{groupcolor}{RGB}{240, 240, 240}
+\definecolor{mygreen}{RGB}{34, 139, 34}
+\definecolor{myred}{RGB}{220, 20, 60}
+\definecolor{teachercolor}{RGB}{255, 243, 205}
+\definecolor{ourscolor}{RGB}{219, 234, 254}
+\definecolor{mygreen}{RGB}{34, 139, 34}
+\definecolor{myred}{RGB}{220, 20, 60}
+\definecolor{b2fcolor}{RGB}{235, 230, 245}   % 极淡灰紫
+\definecolor{f2bcolor}{RGB}{245, 230, 238}   % 极淡灰粉
+
+% 定义我们想要的颜色
+\definecolor{boxback}{RGB}{242, 240, 248}    % 非常浅的紫色底色
+\definecolor{boxframe}{RGB}{112, 108, 145}  % 比较深的紫色边框
+\newtcolorbox{findingbox}[1]{
+  colback=boxback,        % 内部背景颜色
+  colframe=boxframe,       % 边框颜色
+  fonttitle=\bfseries,    % 标题字体加粗
+  title={#1},             % 标题内容
+  coltitle=white,         % 标题文字颜色
+  sharp corners=south,    % 下方尖角（如果想要全圆角可删掉此行）
+  rounded corners=all,    % 全圆角
+  arc=4pt,                % 圆角半径
+  boxrule=0.5pt,          % 边框线条宽度
+  top=2pt,                % 内部顶部间距
+  bottom=2pt,             % 内部底部间距
+  left=5pt,               % 内部左侧间距
+  right=5pt               % 内部右侧间距
+}
+% NOTE: including geometry package
+% The geometery package modifies some page properties when used. This can dramatically change the page margins, leading to severe template violation, and potential desk rejection. If the package is required, it can be used with the "pass" flag to skip the default page modifications, as in the following line:
+% \usepackage[pass]{geometry}
+
+\usepackage{lineno}
+\newcommand{\ours}{TCOD\xspace}
+\newcommand{\oursfull}{Temporal Curriculum On-Policy Distillation\xspace}
+\definecolor{darkblue}{rgb}{0, 0, 0.5}
+\hypersetup{colorlinks=true, citecolor=darkblue, linkcolor=darkblue, urlcolor=darkblue}
+
+\newcommand{\wenhao}[1]{\textcolor{blue}{#1}}
+\newcommand{\todo}[1]{\textcolor{red}{\textbf{TODO:} #1}}
+
+
+\etocdepthtag.toc{mtchapter}
+
+
+
+\title{\purplecomic{\textbf{TCOD}}: Exploring Temporal Curriculum in On-Policy Distillation for Multi-turn Autonomous Agents}
+
+% Authors must not appear in the submitted version. This should be be taken care of automatically as long as you are using the "submission" option for the colm2026_conference package. But it's on the authors to verify. Non-anonymous submissions will be rejected without review.
+
+
+\author{
+Jiaqi Wang\footnotemark[2],
+~Wenhao Zhang, 
+~Weijie Shi, 
+~Yaliang Li, 
+~James Cheng\footnotemark[2] \\
+[1em]
+Tongyi Lab\includegraphics[height=12pt]{figure/logo.pdf}, Alibaba Group \\
+[1em]
+}
+
+
+
+% The \author macro works with any number of authors. There are two commands
+% used to separate the names and addresses of multiple authors: \And and \AND.
+%
+% Using \And between authors leaves it to \LaTeX{} to determine where to break
+% the lines. Using \AND forces a linebreak at that point. So, if \LaTeX{}
+% puts 3 of 4 authors names on the first line, and the last on the second
+% line, try using \AND instead of \And before the third author name.
+
+\newcommand{\fix}{\marginpar{FIX}}
+\newcommand{\new}{\marginpar{NEW}}
+
+\begin{document}
+
+\ifcolmsubmission
+\linenumbers
+\fi
+
+\maketitle
+
+
+\begingroup
+  \renewcommand\thefootnote{}%
+  \footnotetext{
+      $^{\dagger}$ The Chinese University of Hong Kong.
+  }
+\endgroup
+\phantomsection
+
+\begin{tcolorbox}[
+  colback=blue!5!white,
+  colframe=richpurple!80!black,
+  boxrule=1.5pt,
+  arc=3mm,
+  left=4mm,
+  right=4mm,
+  top=3mm,
+  bottom=3mm,
+  fonttitle=\bfseries,
+  title=\textbf{Abstract}
+]
+
+
+On-policy distillation (OPD) has shown strong potential for transferring reasoning ability from frontier or domain-specific models to smaller students. 
+While effective on static single-turn tasks, its behavior in multi-turn agent settings remains underexplored. 
+In this work, we identify a key limitation of vanilla OPD in such settings, which we term \textit{Trajectory-Level KL Instability}.
+Specifically, we observe that KL divergence increases together with a drop in success rate, and even after convergence, the KL remains high, leading to unstable training.
+% we observe the co-occurrence of KL divergence escalation and success rate collapse, and even when convergence is eventually achieved, a high initial KL divergence remains, both of which induce training instability.
+This instability arises from inter-turn error compounding: as errors accumulate, the student is driven beyond the teacher’s effective support, rendering the supervision signal unreliable.
+To address this, we propose \textbf{TCOD} (\textbf{T}emporal \textbf{C}urriculum \textbf{O}n-Policy \textbf{D}istillation), a simple yet effective framework that controls the trajectory depth exposed to the student and progressively expands it from short to long with a curriculum schedule. 
+Experimental results across four student–teacher pairs on three multi-turn agent benchmarks (ALFWorld, WebShop, ScienceWorld) show that \textit{\ours mitigates KL escalation and enhances KL stability throughout training, improving agent performance by up to 18 points over vanilla OPD.}
+Further evaluations show that \ours can even \textit{surpass the teacher’s performance and generalize to tasks on which the teacher fails.}
+
+\end{tcolorbox}
+% We further uncover the underlying mechanism: inter-turn compounding errors progressively push the student outside the teacher’s effective support, rendering the supervision signal unreliable.
+% To explain this behavior, we identify a key limitation of vanilla OPD, which we term \emph{trajectory-level KL instability}. 
+% In this paper, we find that vanilla OPD becomes unstable in this regime: small students exhibit KL escalation and success collapse, while larger students suffer from high initial divergence and inefficient convergence. 
+% This instability is driven by compounding errors across turns, which progressively push the student outside the teacher's effective support and render supervision unreliable. 
+% On-Policy Distillation (OPD) has shown strong performance in single-turn settings, but its application to multi-turn autonomous agents remains largely unexplored. 
+% In this work, we identify a fundamental failure mode of vanilla OPD in long-horizon agentic tasks, which we term \textit{Horizon-Induced KL Escalation}: compounding errors cause per-turn KL divergence to escalate monotonically with trajectory depth, pushing the student into states where the teacher's supervision signal becomes unlearnable and causing training to collapse in small models. 
+% To address this, we propose \oursfull~(\ours), a lightweight temporal curriculum framework that controls the trajectory depth exposed to the student during training. 
+% \ours features two complementary progression strategies: Forward-to-Backward (F2B), which builds distributional robustness by progressively extending the student's control horizon from early steps, and Backward-to-Forward (B2F), which leverages teacher scaffolding to provide dense reward signals near successful terminal states before expanding the student's autonomy. 
+% Both strategies require only minimal code modifications on top of any existing OPD implementation. 
+% Extensive experiments on WebShop, ALFWorld, and ScienceWorld demonstrate that \ours rescues small models from training collapse, improves performance and training efficiency for larger models, and even enables students to generalize to tasks beyond the teacher's own capability boundary. 
+% Further analysis reveals that the choice between B2F and F2B should be guided by student capacity and task difficulty.
+% \end{abstract}
+
+\section{Introduction}
+
+% On-Policy Distillation (OPD) has emerged as a compelling training paradigm for aligning smaller student models with stronger teacher models. 
+% Unlike Reinforcement Learning (RL), which suffers from high sample complexity and credit assignment, OPD directly leverages the teacher's distribution as a supervisory signal over student-generated trajectories, enabling faster convergence~\cite{}. 
+% These advantages have made OPD particularly attractive across a range of tasks, including mathematical reasoning and question answering~\cite{}, yet these applications share a common characteristic: they are all \textit{single-turn} settings. 
+% Whether OPD's advantages transfer to multi-turn autonomous agents---systems that must reason and act across extended sequences of environment interactions---remains largely unexplored, and it is unclear whether the multi-turn structure introduces new challenges that fundamentally limit its effectiveness.
+
+%这里的第一段 single-turn和multi-turn有点突兀。
+% On-Policy Distillation (OPD) has emerged as a compelling training paradigm for aligning smaller student models with stronger teachers. 
+% Compared with Reinforcement Learning (RL), which often struggles with sample inefficiency and sparse rewards in long-horizon environments, OPD directly leverages the teacher's output distribution as dense token-level supervision on student-generated trajectories, often enabling faster convergence~\cite{}. 
+% These advantages have led to strong empirical results in domains such as mathematical reasoning and question answering~\cite{}. 
+
+
+% However, the effectiveness of OPD depends on the teacher remaining informative on the states visited by the student. 
+% When the student's rollout distribution drifts too far from the teacher's support, the resulting distribution shift can induce large KL divergence and make optimization unstable or even non-convergent. 
+% This issue is especially pronounced in multi-turn agent tasks, where early action errors alter future states and accumulate over long interaction horizons.
+% Compared with reinforcement learning (RL) methods such as GRPO~\citep{Guo_2025}, which suffer from sample inefficiency and sparse rewards, OPD provides , enabling more efficient sampling and faster convergence~\citep{lu2025onpolicydistillation}. 
+% On-Policy Distillation has recently emerged as a practical alternative to reinforcement learning for training smaller language models
+
+On-policy distillation has recently emerged as a primary paradigm for transferring complex reasoning capabilities from frontier models to their smaller counterparts~\citep{agarwal2024policy,lu2025onpolicydistillation}. 
+These methods have demonstrated remarkable success in mathematical or question answering tasks by minimizing token-level KL divergence over student-generated rollouts~\citep{jang2026stable, ko2026scaling,jin2026entropy}. 
+However, these approaches are inherently designed for static, single-turn reasoning.
+Consequently, they leave the more challenging \textit{multi-turn} agent setting underexplored, where the model must continuously reason and act based on a growing history of sequential interactions.
+It remains a critical open question whether the stability of vanilla OPD can safely generalize to such dynamic, long-horizon environments.
+
+In this work, we present empirical evidence that naively applying vanilla OPD in this multi-turn regime leads to a fundamental failure mode, which we term \textbf{Trajectory-Level KL Instability}.
+Through experiments on ALFWorld~\citep{shridhar2020alfworld}, we find that \textbf{\textit{(i)}} the student models suffer from simultaneous KL escalation and success rate collapse, 
+and \textbf{\textit{(ii)}} although they eventually converge, they begin with prohibitively high KL divergence, both of which induce training instability. 
+Crucially, as shown in Figure~\ref{fig:intro}(left), we reveal the underlying mechanism: 
+Compounding errors across turns progressively push the student into states outside the teacher’s effective support. 
+As a result, the teacher assigns lower probabilities to tokens in student-generated responses, indicating increasing KL divergence at each turn and rendering its supervision signal unreliable.
+% For small students, this is catastrophic; for larger ones, it is partially tolerated but remains highly inefficient.
+
+To address this, we propose \textbf{\ours} (\textbf{T}emporal \textbf{C}urriculum \textbf{O}n-Policy \textbf{D}istillation), a simple yet effective framework that controls the trajectory depth exposed to the student and progressively expands it from short to long via a pacing strategy governed by a configurable curriculum growth rate.
+Based on this core idea, as shown in Figure~\ref{fig:intro}(right), we introduce two practical variants with only minimal code modifications: \textbf{Forward-to-Backward (\ours-F2B)}, which restricts the student to the early steps of the trajectory and progressively extends it to the maximum explore horizon; 
+and \textbf{Backward-to-Forward (\ours-B2F)}, which leverages the teacher to navigate the agent to near-terminal states, alleviating error accumulation in the early steps, while gradually extending the student's rollout horizon backward to the initial stages.
+
+
+Built on top of \ours-F2B/B2F, we evaluate four student-teacher pairs on three multi-turn agent benchmarks: ALFWorld~\citep{shridhar2020alfworld}, 
+WebShop~\citep{yao2022webshop}, and ScienceWorld~\citep{wang2022scienceworld}. 
+Overall, \textbf{\ours alleviates KL instability and improves performance} by recovering Qwen3-1.7B from near-zero success rates and boosting the larger one (e.g., Qwen2.5-7B) by up to $15.71$ success rate points while reducing action rounds by an average of $2.97$ steps. 
+Moreover, \ours does not merely imitate the teacher---on the hard split of ALFWorld where the teacher fails under pass@10 sampling, \ours-B2F surpasses 
+the teacher's success rate by up to $14$ points, \textbf{demonstrating generalization beyond the teacher's own capability boundary.} 
+Finally, \ours-F2B/B2F are robust to the curriculum growth rate with less than $2\%$ performance variation, and reduce total training time by up to $32\%$ compared to vanilla OPD.
+
+% leveraging dense token-level KL divergence losses between teacher and student over student-generated trajectories.
+
+% However, \textit{multi-turn} agent tasks introduce sequential interaction dynamics: each student action changes future states and thus the supervision context itself, causing rollout-induced distribution shift to accumulate with trajectory depth. When this shift becomes large, the resulting KL divergence can destabilize optimization or even prevent convergence.
+
+
+% In this work, we take a first step toward answering this question by applying OPD to multi-turn agent settings. 
+% Through a pilot study, we uncover a fundamental failure mode termed as \textbf{Horizon-Induced KL Escalation}: 
+% In particular, OPD fails to converge on long-horizon agentic tasks: KL divergence escalates rapidly during training, while task success collapses to near zero.
+
+
+% Motivated by the above observations, a critical question arises:
+
+% \textit{How can we preserve the advantages of on-policy distillation while avoiding the trajectory-level instability caused by compounding errors in multi-turn agent?}
+
+
+
+
+% To the best of our knowledge, \ours is \textit{\textbf{the first work} to explicitly mitigate the compounding error bottleneck in multi-turn OPD through a temporal curriculum}.
+
+
+
+
+% \begin{quote}
+%     \textit{OPD fails to converge in long-horizon agentic tasks, with KL divergence escalating rapidly and task success rate collapsing to near-zero. }
+
+% \end{quote}
+
+% Through careful analysis, we identify its root cause: 
+% in multi-turn on-policy distillation, the teacher provides token-level supervision signals over student-generated trajectories, but compounding errors cause per-turn KL divergence to escalate monotonically with trajectory depth, pushing the student into increasingly OOD states that the teacher has never encountered---rendering its supervision signals unreliable and ultimately unlearnable. 
+% This effect becomes increasingly severe as the interaction horizon extends.
+
+\begin{figure}[t]
+    \centering
+    \includegraphics[width=0.99\linewidth]{figure/intro3.pdf}
+    \vspace{-0.5em}
+    % \captionsetup{font=small}
+    \caption{ \textbf{(left)} In OPD for multi-turn agents, as the number of turns increases, the teacher assigns progressively lower probabilities to tokens in student-generated responses, indicating increasing KL divergence at each turn, rendering the supervision signal unreliable. \textbf{(right)} OPD uses all turns and thus includes compounding errors, whereas \ours-F2B/B2F progressively expands from short to long trajectories, alleviating calculating the error turns.}
+    \label{fig:intro}
+    \vspace{-1em}
+\end{figure}
+
+% Through careful analysis, we identify the root cause of this phenomenon. 
+% In multi-turn on-policy distillation, the teacher provides token-level supervision over trajectories generated by the student itself. 
+% As errors compound across turns, the per-turn KL divergence grows monotonically with trajectory depth, progressively pushing the student into states that lie farther outside the teacher's effective support. 
+% As a result, the teacher's supervision becomes increasingly difficult for the student to learn from, and eventually effectively unlearnable. 
+% This effect becomes more severe as the interaction horizon increases.
+
+ 
+% Crucially, both strategies require only minimal code modifications on top of the vanilla OPD implementation---making \ours broadly applicable without additional computational overhead.
+% Critically, this is a structural failure intrinsic to the multi-turn setting itself, not an artifact of any particular teacher--student pair.
+
+% We evaluate \ours-F2B and \ours-B2F on three multi-turn agent benchmarks: WebShop, ALFWorld, and ScienceWorld. 
+% \ours substantially outperforms vanilla OPD across all settings.
+% % , achieving an average SR of  on the cross-benchmark evaluation. 
+% Especially on ALFWorld, \ours-F2B with Qwen2.5-3B improves SR from 65.72\% to 81.43\% on IID tasks and from 60.45\% to 79.19\% on OOD tasks, a gain of over 15 points. 
+% Surprisingly, on hard tasks where the teacher itself fails under pass@10 sampling, \ours-B2F with Qwen2.5-7B achieves 20.66\% SR, surpassing both vanilla OPD (13.22\%) and the teacher's own single-attempt SR (6.61\%). 
+% Moreover, for smaller models (Qwen3-1.7B), where vanilla OPD collapses to near-zero SR across all benchmarks, \ours recovers meaningful performance with an average SR of 18.6\%. 
+% Regarding the choice between B2F and F2B, we find that F2B is more effective for smaller students ($\leq$3B), while B2F is more effective for larger students ($\geq$7B) and harder tasks. 
+% Finally, \ours reduces total training cost from 64 GPU hours to 48--56 GPU hours, demonstrating that the \ours's efficiency.
+
+
+
+% \textbf{Our main contributions are summarized as follows:}
+% \begin{itemize}
+%     \item We study on-policy distillation in multi-turn agents and identify a new failure mode, \textbf{Horizon-Induced KL Escalation}, showing that long-horizon interaction systematically amplifies rollout-induced distribution shift and destabilizes training.
+    
+%     \item We propose \textit{Temporal Curriculum On-Policy Distillation} (\ours), a lightweight framework that aligns the student's exposed control horizon with its current learning capacity, and instantiate it with two practical strategies, F2B and B2F.
+    
+%     \item Through experiments on WebShop, ALFWorld, and ScienceWorld, we show that \ours consistently stabilizes training, improves success rates over vanilla OPD, rescues small students from collapse, and reduces total training cost by up to 25\%.
+% \end{itemize}
+
+
+% Our main contributions are as follows:
+% \begin{itemize}
+%     \item \textbf{Problem Identification.} We identify and characterize \textit{Horizon-Induced KL Escalation}, a structural failure mode of vanilla OPD in multi-turn agent settings for small models, where compounding errors cause per-turn KL divergence to escalate monotonically with trajectory depth, rendering the teacher's supervision signal unlearnable and causing training to collapse.
+    
+%     \item \textbf{Method.} We propose \ours, a lightweight temporal curriculum framework for multi-turn on-policy distillation, featuring two complementary progression strategies (B2F and F2B) that require only minimal code modifications on top of any existing OPD implementation. \ours rescues small models from training collapse, and further improves performance and training efficiency for larger models.
+    
+%     \item \textbf{Empirical Insights.} Through extensive experiments on WebShop, ALFWorld, and ScienceWorld, we demonstrate that \ours consistently outperforms vanilla OPD and SFT across benchmarks, model sizes, and difficulty levels, and further reveal that the choice of progression direction should be guided by student capacity and task difficulty.
+% \end{itemize}
+
+% In the rapidly evolving landscape of autonomous agents, Large Language Models (LLMs) have demonstrated remarkable potential in executing complex tasks through multi-turn interactions. However, a fundamental bottleneck persists: as the horizon of interaction grows, agents frequently suffer from compounding errors, where a single suboptimal action in early steps leads the model into unfamiliar states from which it cannot recover.
+
+% Traditional Supervised Fine-Tuning (SFT) often fails to address this, as it only trains the model on "perfect" teacher trajectories, leaving the student ill-equipped to handle the distribution shift encountered during real-world inference. While On-Policy Distillation (OPD) attempts to bridge this gap by allowing the student to explore its own action space, it introduces a "cold-start" problem in multi-step settings—without initial guidance, the student is unlikely to reach a successful terminal state, resulting in a sparse reward signal that hampers optimization.
+
+% To reconcile the trade-off between exploration and stability, we introduce POPD (Progressive On-Policy Distillation). Our key insight is that the difficulty of multi-turn distillation can be decomposed into a temporal curriculum. We systematically investigate two progression regimes: Backward-to-Forward (B2F), which stabilizes training by providing "shortcuts" to success, and Forward-to-Backward (F2B), which emphasizes foundational stability at the trajectory's onset. 
+% Our empirical results on [DataSets] reveal that...
+
+\section{Related Work}
+% \todo{Send the related work part to section 6 if needed, not a must. If you still want to present related works in Sec 2, then you should try to make this section shorter on top of the current version.}
+
+% - add performance (x,v)
+
+
+
+% \paragraph{LLM-based Multi-turn Agents}
+% Large language models have shown strong capabilities as interactive agents in environments that require multi-step reasoning, tool use, and long-horizon decision making~\citep{openai2024gpt4technicalreport,yang2025qwen3technicalreport}. 
+% 
+
+\textbf{LLM-based Multi-turn Agents.}
+Large language models have demonstrated strong capabilities as multi-turn agents~\citep{openai2024gpt4technicalreport,yang2025qwen3technicalreport}. 
+A common paradigm interleaves reasoning and action generation via frameworks such as ReAct~\citep{yao2022react}, enabling agents to solve tasks in embodied planning, web navigation, and other interactive environments~\citep{shridhar2020alfworld,yao2022webshop,wang2022scienceworld,merrill2026terminal,cli_anything,li2026skillsbench}.
+Recent systems such as OpenClaw~\citep{wang2026openclaw,openclaw} further demonstrate the potential of LLM-based agents for long-horizon tasks, motivating increasing interest in general-purpose agentic frameworks.
+Despite these advances, training multi-turn agents remains challenging due to long-horizon credit assignment~\citep{Guo_2025}, memory management~\citep{shi2026r}, and the sample inefficiency of reinforcement learning in sparse-reward settings~\citep{feng2025groupingrouppolicyoptimizationllm,penaloza2026privileged}.
+% Large language models have shown strong capabilities as interactive agents in environments that requiring multi-step reasoning and long-horizon decision making~\citep{openai2024gpt4technicalreport,yang2025qwen3technicalreport}. 
+% A common paradigm is to interleave text-based reasoning and action generation using frameworks such as ReAct~\citep{yao2022react}, enabling agents operate in embodied task planning~\citep{shridhar2020alfworld}, web navigation~\citep{yao2022webshop}, and other interactive settings~\citep{wang2022scienceworld, merrill2026terminal,cli_anything,li2026skillsbench}.
+% Unlike single-turn tasks, multi-turn agent tasks are trajectory-dependent, where errors may accumulate over long horizons, leading to degraded performance~\citep{Guo_2025,feng2025groupingrouppolicyoptimizationllm}. 
+% These properties make multi-turn agent training fundamentally more challenging than standard single-turn reasoning, due to issues such as long-horizon credit assignment~\citep{Guo_2025}, long-term memory management~\citep{shi2026r}, and the low sample efficiency of reinforcement learning methods in sparse-reward settings~\citep{feng2025groupingrouppolicyoptimizationllm}. These challenges motivate alternative training paradigms for enabling strong multi-turn agentic behaviors beyond standard reinforcement learning.
+% A widely adopted paradigm is to perform text-based reasoning and action generation with structured frameworks such as ReAct~\citep{yao2022react}, enabling agents to solve tasks through repeated interaction with the environment. 
+% This paradigm has been widely studied across environments spanning embodied task planning~\citep{shridhar2020alfworld}, web navigation\citep{yao2022webshop}, scientific reasoning\citep{wang2022scienceworld}, and other agentic settings~\citep{merrill2026terminal,cli_anything,li2026skillsbench}. 
+
+
+% OLD by jaiqi
+% \paragraph{LLM-based Multi-turn Agents}
+% Large Language Models have demonstrated remarkable capabilities as multi-turn agents~\citep{openai2024gpt4technicalreport,yang2025qwen3technicalreport}. 
+% Previously, the methods relies on prompting powerful closed-source models with structured reasoning frameworks such as ReAct~\citep{yao2022react} and Chain-of-Thought~\citep{wei2022chain,chen2024unlockingcapabilitiesthoughtreasoning,wang2025thinknotselectivereasoning}.
+% Recently, the release of OpenClaw~\citep{wang2026openclaw,openclaw} marked a qualitative leap in agents, demonstrating agent can be applied in daily life for complete complex and long-horizon tasks. 
+% This spurred a series of subsequent works adapting the existing environments to the agent paradigm, including agent harness~\citep{merrill2026terminal}, CLI-anything~\citep{cli_anything}, and agent skills~\citep{li2026skillsbench}. 
+% Despite this advantages, challenges remain: credit assignment over long trajectories~\citep{Guo_2025}, long-term memory management~\citep{shi2026r}, and the difficulty of training agents from via GRPO due to sparse rewards and low sample efficiency~\citep{feng2025groupingrouppolicyoptimizationllm}.
+% , enabling multi-step decision making through natural language interaction. 
+
+% long-horizon multi-turn tasks place increasingly demanding requirements on the model's reasoning and decision-making capabilities, making how to effectively train such agents a central research problem. Existing approaches progress from Supervised Fine-Tuning~\citep{zheng2024llamafactoryunifiedefficientfinetuning} to Reinforcement Learning methods such as PPO~\citep{schulman2017proximalpolicyoptimizationalgorithms} and GRPO~\citep{Guo_2025,wang2025thinknotselectivereasoning}, yet RL-based approaches in multi-turn long-horizon settings suffer from sparse rewards, high sample complexity, and training instability, limiting their practical applicability to complex agentic tasks.
+% The deployment of Large Language Models (LLMs) as autonomous agents has become a prevalent paradigm for solving complex, interactive tasks, such as web navigation and tool manipulation \cite{}. Currently, the most dominant methods rely on prompting powerful closed-source models (e.g., GPT-4) using frameworks like ReAct \cite{} or Chain-of-Thought (CoT) \cite{} to orchestrate multi-step reasoning. To democratize agentic capabilities and reduce inference costs, recent research has heavily leaned into Supervised Fine-Tuning (SFT), where smaller open-source models are trained on expert trajectories curated from powerful teachers \cite{}. However, SFT inherently suffers from exposure bias \cite{}: the student model is only exposed to gold-standard trajectories during training. In multi-turn environments, this limitation is drastically amplified. A minor deviation in early interaction turns pushes the agent into an out-of-distribution state, leading to cascading compounding errors from which the SFT-trained model cannot recover. Our work directly addresses this by equipping the student with the ability to navigate its own generated state space.
+
+\textbf{On-Policy Distillation and its Limitations.}
+On-Policy Distillation~\citep{agarwal2024policy, lu2025onpolicydistillation} has emerged as a compelling alternative to on-policy post-training by replacing sparse scalar rewards with dense distillation signals and thereby improving sample efficiency.
+Existing work has improved OPD through several design choices, including objective design~\citep{jang2026stable, jin2026entropy}, optimization heuristics~\citep{ko2026scaling}, and alternative supervision sources~\citep{ye2026policy, zhao2026self}. 
+These methods, such as balancing forward and backward KL terms~\citep{jang2026stable, jin2026entropy} and incorporating RL-style heuristics such as reward clipping~\citep{ko2026scaling}, improve training stability and convergence.
+However, these approaches are primarily designed for single-turn settings and do not directly address multi-turn agent environments.
+
+% In contrast, we study how to improve OPD performance and stability in multi-turn settings.
+% Existing work has improved OPD from several perspectives: some studies revise the distillation objective by balancing forward- and backward-KL terms~\citep{jang2026stable, jin2026entropy}, others incorporate RL-style optimization heuristics such as reward clipping~\citep{ko2026scaling}, and more recent approaches replace external supervision with self-supervision augmented by hints or environmental feedback~\citep{ye2026policy, zhao2026self}. These methods have demonstrated strong performance in single-turn settings such as mathematical reasoning and question answering. However, their applicability to multi-turn autonomous agents has not been systematically explored.
+
+% \paragraph{On-Policy Distillation and its Limitations}
+% On-Policy Distillation~\citep{agarwal2024policy, lu2025onpolicydistillation} has emerged as a compelling alternative to RL. 
+% Recent works~\citep{jang2026stable, jin2026entropy} improve the distillation based on the tradeoff between forward and backward KLs. 
+% \citet{ko2026scaling} incorporates RL tricks into OPD, such as reward clipping. 
+% More recent works~\citep{ye2026policy, zhao2026self} further extend this paradigm by having the model supervise itself, augmented with hints or environmental feedback signals.
+% % These methods have demonstrated strong performance in single-turn settings such as mathematical reasoning and question answering. 
+% However, both prior works remain confined to single-turn domains, and their applicability to multi-turn autonomous agents—where previous actions and observations influence subsequent interactions—has not been systematically explored.
+% In this work, we take a first step toward studying how OPD behaves in multi-turn settings.
+% To combat the distribution shift inherent in SFT, On-Policy Distillation (OPD) has emerged as a promising alternative \cite{}. In standard OPD paradigms, the student model actively explores the environment by rolling out its own trajectories, and a stronger teacher model provides sequence-level or token-level supervisory signals (e.g., via KL divergence or reward modeling) on these self-generated states \cite{}. While OPD successfully aligns the training and inference distributions, applying it directly to long-horizon, multi-turn agentic tasks introduces a severe "cold-start" bottleneck. Because early-stage student models lack the fundamental reasoning capacity to complete complex tasks autonomously, their unguided exploration rarely yields successful terminal states. Consequently, the teacher's feedback is often sparse or overwhelmingly corrective, leading to optimization instability and collapse \cite{}. Our Progressive On-Policy Distillation (POPD) framework resolves this critical flaw by introducing a temporal curriculum. By systematically scheduling the teacher's intervention through Backward-to-Forward (B2F) or Forward-to-Backward (F2B) mechanisms, we provide a smooth transition from dense guidance to fully autonomous exploration.
+
+% \section{Failure Analysis of On-policy Distillation in Multi-Turn Settings}
+
+\textbf{Curriculum Learning.}
+Curriculum learning~\citep{bengio2009curriculum} is a training strategy where a model is exposed to progressively more difficult examples as its competence grows. 
+Recent works~\citep{zhang2026beyond, wang2025dump} apply this to the pre-training and post-training of LLMs, respectively. 
+\citet{shi2025efficient, wang2025practitioner,gong2026temp} further apply curriculum learning to reinforcement learning methods, such as GRPO~\cite{Guo_2025}, but still rely on an external model to measure difficulty.
+\citet{lauffer2025imitation} trains the student only on the expert's subsequent corrective actions, breaking the on-policy setting.
+% Prior work either relies on external models to measure difficulty or requires expert corrections, both of which add cost and .
+Our approach avoids both by defining difficulty through increasing trajectory depth, using only student-generated data, keeping training simple, on-policy, and more stable.
+
+% \todo{Reorg this. Think about the purpose of this section here. Do we want to present our notations or problem setup or motivation here? Consider whether we should merge this section with Sec. 4, perhaps at the back of it. Tt would be like 1. motivation by empirical observation -> 2. problem setup with notations \& some analysis, then we can smoothly transfer to the next TCOD section.}
+
+
+\section{Preliminary}
+
+In this paper, we consider multi-turn autonomous agents interacting with an 
+environment over a finite horizon. Let $t \in \{0, \dots, T-1\}$ 
+denote the turn index within a trajectory, where $T$ is the maximum 
+number of interaction steps. At each turn $t$, the agent receives an 
+observation $o_t$, generates a response $a_t$, and the environment 
+returns the next observation $o_{t+1}$. 
+Following the recent agent frameworks~\citep{wang2025thinknotselectivereasoning}, each response $a_t$ consists of a chain-of-thought 
+reasoning trace followed by an executable action.
+
+\textbf{History State for Multi-turn Agent.} Since the environment is generally partially observable, we define the 
+agent state as the full interaction history up to the current 
+observation:
+\begin{equation}
+    h_t = (o_0, a_0, o_1, a_1, \dots, o_{t-1}, a_{t-1}, o_t).
+\end{equation}
+A complete trajectory is then $\tau = (h_0, a_0, h_1, a_1, \dots, 
+h_{T-1}, a_{T-1})$, which terminates either when a termination action 
+is taken or when the horizon $T$ is reached.
+
+\textbf{On-Policy Distillation for Multi-turn Agent.}
+Given a teacher policy $\pi_\phi$ and a student policy $\pi_\theta$, 
+the goal of on-policy distillation is to align the student with the 
+teacher under the student's own state distribution. The objective is:
+\begin{equation}
+    \mathcal{L}_{\text{OPD}}(\theta)
+    = \mathbb{E}_{\tau \sim \pi_\theta}
+    \left[
+    \sum_{t=0}^{T-1}
+    \mathcal{D}_{\mathrm{KL}}
+    \big(
+    \pi_\phi(a_t \mid h_t)
+    \parallel
+    \pi_\theta(a_t \mid h_t)
+    \big)
+    \right],
+\end{equation}
+where $\mathcal{D}_{\mathrm{KL}}(\pi_\phi \parallel \pi_\theta) = \sum_{a_t} \pi_\phi(a_t \mid h_t) \log \frac{\pi_\phi(a_t \mid h_t)}{\pi_\theta(a_t \mid h_t)}$ is the KL divergence measuring the discrepancy between the teacher policy $\pi_\phi$ and the student policy $\pi_\theta$.
+% This approach combines the on-policy relevance of reinforcement learning with the dense reward signal of supervised learning, thereby mitigating exposure bias while maintaining computational efficiency.
+% the KL divergence is computed at the token level over the generated sequence by the student at each turn.
+% \subsection{Problem Formulation}
+
+% % \subsection{The MDP Formulation for multi-turn autonomous agents}
+
+% % We consider multi-turn autonomous agents operating in interactive environments, such as web navigation (WebShop), embodied tasks (ALFWorld), or scientific reasoning (ScienceWorld). 
+% Let $t \in \{0, \dots, T\}$ denote the turn step within a single trajectory of maximum length $T$. 
+% Let $n  \in \{0, \dots, N\}$ represent the current training step, where $N$ is the total number of training steps.
+% At each turn $t$, the agent receives an observation $o_t$ from the environment, generates a response $a_t$, and receives the next observation $o_{t+1}$ based on the executed action.
+% Following recent agent frameworks, each response $a_t$ consists of a chain-of-thought reasoning process followed by an executable action.
+% % \paragraph{Structured Response Format.} 
+% % Following recent agent frameworks, the agent's response $a_t$ consists of two components structured as:
+% % \begin{equation}
+% % a_t = \langle \text{think: } c_t, \text{ action: } u_t \rangle
+% % \end{equation}
+% % where $c_t$ represents the Chain-of-Thought (CoT) reasoning process, and $u_t$ denotes the executable action (e.g., \texttt{click[button\_id]}, \texttt{search[query]}, \texttt{goto[location]}). 
+% This structured format enables the agent to explicitly reason before acting, improving interpretability and decision quality.
+
+% % \paragraph{State and Trajectory.} 
+% Let $s_t = (o_0, a_0, o_1, a_1, \dots, o_t)$ denote the state at turn $t$, which includes the interaction history up to the current observation. 
+% A complete trajectory over $T$ turns is represented as:
+% \begin{equation}
+% \tau = (s_0, a_0, s_1, a_1, \dots, s_T, a_T)
+% \end{equation}
+% where $s_0 = (o_0)$ is the initial observation (e.g., task instruction), and $s_T$ corresponds to the terminal state (e.g., task finished). The trajectory terminates when the agent executes a termination action (e.g., \texttt{submit}, \texttt{done}) or reaches the maximum turn limit $T$.
+
+% \paragraph{Policy and Objective.} A policy $\pi(a|s)$ defines a probability distribution over responses conditioned on the current state. In practice, this is implemented as an autoregressive language model that sequentially generates the thought $c_t$ and action $u_t$ tokens:
+% \begin{equation}
+% \pi(a_t|s_t) = \pi(c_t, u_t | s_t) = \prod_{i=1}^{|c_t|} \pi(c_t^{(i)} | s_t, c_t^{<i}) \prod_{j=1}^{|u_t|} \pi(u_t^{(j)} | s_t, c_t, u_t^{<j})
+% \end{equation}
+
+% Our goal is to distill a powerful teacher policy $\pi_\phi$ (e.g., RL-based or larger models) into a smaller student policy $\pi_\theta$ (e.g., Qwen3-4B) via on-policy learning. The standard on-policy distillation objective is:
+% \begin{equation}
+% \mathcal{L}_{OPD}(\theta) = \mathbb{E}_{\tau \sim \pi_\theta} \left[ \sum_{t=0}^{T} \mathcal{D}_{KL} \left( \pi_\phi(a_t|s_t) \parallel \pi_\theta(a_t|s_t) \right) \right]
+% \end{equation}
+% where the expectation is taken over trajectories sampled from the student's own policy, ensuring alignment between training and inference distributions.
+
+\section{\ours: Temporal Curriculum On-Policy Distillation}
+In this section, we observe a key limitation of OPD in multi-turn agent settings, termed trajectory-level KL instability. 
+Through empirical analysis, we show that OPD exhibits instability in long-horizon interactions, where compounding errors lead to escalating KL divergence and degraded performance.
+Motivated by these findings, we propose \ours, a temporal curriculum strategy that progressively controls trajectory depth during training to improve stability and effectiveness in multi-turn distillation.
+
+\subsection{Trajectory-Level KL Instability in Multi-Turn On-Policy Distillation}
+
+% \todo{Should we provide a brief summary of our motivation at the start of Section 4? This will make this section easier to follow.}
+
+In this section, we conduct a pilot study on ALFWorld to examine the behavior of OPD in multi-turn settings. 
+We systematically evaluate student–teacher pairs across the Qwen3 and Qwen2.5 model families, including both larger-scale and domain-adapted teachers. 
+For Qwen3, we use Qwen3-30B-A3B-Instruct as the teacher and Qwen3-\{0.6, 1.7, 4\}B as students. 
+For Qwen2.5, we adopt a GRPO-trained Qwen2.5-7B model as the teacher and Qwen2.5-\{0.5, 1.5, 3, 7\}B as students.
+
+\begin{figure}[t]
+\centering
+% \captionsetup{font=small}
+\begin{subfigure}[b]{0.23\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figure/exp1_rollout_kl_divergence_mean.pdf}
+\caption{Trajectory-level KL escalates during training.}
+\label{fig:vanilla_kl}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.23\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figure/exp1_rollout_env_done_mean.pdf}
+\caption{Success rate collapses to zero as KL spikes.}
+\label{fig:vanilla_success}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.23\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figure/moti2.pdf}
+\caption{Initial and final $KL$ during OPD training.}
+\label{fig:kl bar}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.23\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figure/plot/alfworld_kl_comparison.pdf}
+% \includegraphics[width=\textwidth]{figure/plot/exp1_response_length_mean.pdf}
+\caption{Per-turn KL divergence increases as errors accumulate.}
+\label{fig:per_turn_kl}
+\end{subfigure}
+% \hfill
+\vspace{-0.5em}
+\caption{
+    \textbf{Trajectory-level KL analysis across different teacher--student pairs on ALFWorld.}
+    % We select the teacher as Qwen3-30B-A3B-Instruct and the student as Qwen3-0.6B and Qwen3-1.7B under vanilla OPD on ALFWorld.
+    (a)(b) show that the KL divergence escalates throughout training and task completion rates collapse. 
+    (c) shows the large gap between the initial and converged KL divergence during OPD training. 
+    (d) reveals the underlying reason: the KL divergence grows with the turn index, indicating compounding error amplification over the trajectory.
+}
+\vspace{-1.5em}
+\label{fig:challenges}
+\end{figure}
+
+% \todo{Merge Observation 1 and Observation 2 into one paragraph if you insist on presenting these here.}
+
+\textbf{Observation 1: KL escalation and success rate collapse co-occur during training.}
+Unlike prior work on single-turn settings such as mathematics or question answering, 
+where the KL divergence consistently converges and decreases throughout training, we observe that the KL divergence escalates with the number of training steps in multi-turn agent scenarios. 
+As shown in Figure~\ref{fig:vanilla_kl}\&\ref{fig:vanilla_success}, when the student model (Qwen3-\{0.6,1.7\}B) is trained under vanilla OPD 
+with a strong teacher (Qwen3-30B-A3B-Instruct), the trajectory-level KL divergence escalates rapidly, and the task success rate collapses to near-zero. 
+
+\textbf{Observation 2: Although KL divergence converges, it suffers from a prohibitively high initial value.}
+Moreover, we conduct experiments on different student models and observe that although their KL divergence eventually converges, they start with a prohibitively high value.
+As shown in Figure~\ref{fig:kl bar}, across different student-teacher pairs (Qwen3-3B distilled from Qwen3-30B-A3B-Instruct, and Qwen2.5-\{3,7\}B distilled from a GRPO-trained Qwen2.5-7B model), we consistently observe the initial KL divergence ($\sim1000$) is typically orders of magnitude larger than its converged value ($\sim60$), indicating severe instability during the training for multi-turn OPD.
+More details refer to Appendix~\ref{app: motivation}.
+
+\textbf{The underlying mechanism: Compounding error amplification over the trajectory.}
+The above two observations motivated us to investigate why directly applying OPD to agents leads to such KL escalation and training instability. 
+To this end, in Figure~\ref{fig:per_turn_kl}, we visualize the per-turn KL divergence for Qwen2.5-3B distilled from a GRPO-trained Qwen2.5-7B and Qwen3-30B-A3B-Instruct, and observe a consistent increase with the turn index.
+% This pattern stems from a fundamental characteristic of multi-turn agents: student-generated actions and observations are appended to the history $h_t$, causing interactions to be causally coupled across turns. 
+% Any distribution mismatch at step $t$ corrupts future history, driving the agent into states increasingly unfamiliar to the teacher, and inflating the KL divergence at each subsequent step.
+
+Regardless of whether the increasing KL divergence reflects the student’s inability to imitate the teacher or is a consequence of the student entering out-of-distribution states where the teacher becomes uncertain, the underlying issue remains the same—\textit{error accumulation over turns}. 
+This is an inherent property of long-horizon multi-turn agents: student-generated actions and observations are appended to the history $h_t$, inducing causal coupling across turns and resulting in an increasing trend in KL divergence.
+For small students, this is catastrophic; for larger ones, it is partially tolerated but remains highly inefficient.
+
+% As trajectory depth increases, the student's state distribution diverges from the teacher's effective support, rendering its supervision signal unreliable. 
+
+
+% This increased KL stems from a fundamental characteristic of multi-turn agents: 
+% student-generated actions and observations are appended to the history $h_t$, causing interactions to be causally coupled across turns. Consequently, any distribution mismatch at step $t$ 
+% corrupts future history, driving the agent into states unfamiliar to the teacher 
+% and inflating the KL divergence at each step.
+% Furthermore, this compounding divergence distorts advantage estimation, yielding unstable gradients for policy optimization. 
+
+
+
+
+\begin{remark}Note that Long-CoT increases the response length on the same environment state. 
+However, multi-turn agents update the environment state at each interaction by incorporating new observations and actions, thereby amplifying compounding errors over the trajectory.
+\end{remark}
+
+The above observations and analysis pose a challenge: how can we retain the benefits of OPD’s dense signal while avoiding destabilization from accumulated errors in long-horizon interactions?
+To address this, we turn to curriculum learning, where the model is first trained on easy problems and progressively exposed to hard ones. 
+% By limiting the number of consecutive student actions in early training, we directly constraint the number of steps over which errors can accumulate, preventing the student from being pushed into states far outside the teacher’s support.
+
+% We term this failure mode \textit{KL Escalation in Agent}, which stems from a structural limitation inherent to multi-turn interaction in small-capacity models.
+% Crucially, this failure is independent of the teacher: both a large-scale teacher and a domain-specific RL-enhanced teacher yield similar performance, indicating that the collapse 
+% \textbf{Observation 2: Larger students converge, but still 
+% exhibit high initial KL divergence.}
+% As shown in Figure~\ref{fig:kl1}, when the student has a higher capacity (e.g., Qwen2.5-3B/7B), OPD with either a 30B teacher or a 7B RL teacher eventually converges rather than collapsing. However, the trajectory-level KL divergence begins at a prohibitively high value, indicating that early training occurs in a highly unstable regime.
+% Such instability makes the training process sensitive to task difficulty and model capacity, increasing the likelihood of divergence for weaker students or more challenging environments.
+% This large initial KL gap reveals a fundamental challenge: the student must fit the teacher's long-horizon trajectory distribution (covering both reasoning and action logic), yet their distributions are substantially misaligned, imposing severe stress on training stability and reasoning ability.
+% In this paper, we identify the cause: .
+% \paragraph{Root Cause: Compounding Errors along the Trajectory.}
+% \paragraph{The Underlying Mechanism: Compounding Error Amplification with Increasing Turns.}
+% , pushing the student into states where teacher supervision becomes unlearnable. 
+% The advantages in whole trajectories are causally coupled: the KL divergence at step $t+1$ depends on the accumulated history from steps $0$ to $t$, where student-generated responses may introduce compounding errors.
+% Unlike single-turn settings with fixed prompts, 
+
+
+
+% To address this, we 
+% These observations and analyses point to a concrete design requirement: to ensure stable distillation, trajectory depths must be within the student's current learning capacity. 
+% This motivates our method \oursfull, which we introduce next.
+
+\subsection{Our Proposal: Temporal Curriculum On-Policy Distillation}
+\label{sec:method}
+\begin{figure}[t]
+    \centering
+    % \vspace{-2em}
+    % \captionsetup{font=small}
+    \includegraphics[width=\linewidth]{figure/method.pdf}
+    \caption{\textbf{Overview of our method \ours-F2B/B2F.} Comparison of vanilla on-policy distillation and \ours. \textbf{Left} is the OPD, \textbf{middle} is the illustration of \ours-F2B, and \textbf{right} is \ours-B2F. $k$ is the linear pacing control the trajectory length. The blue step is executed by the student, and the red step is executed by the teacher with a stop gradient.}
+    \vspace{-1.5em}
+    \label{fig:method}
+\end{figure}
+
+% Previous observations reveal that vanilla OPD exposes the student to the entire trajectory at the early stage of training, causing compounding errors to accumulate into an unlearnable distillation signal.
+% To address this challenge, we inspired by the curriculum learning, where the core idea is to ask the model first learn the easy task and then learn the hard task.
+
+% % -----------------------------------------------------------------
+% \subsection{Method: Design \ours\ for Multi-Turn Agent}
+% \label{sec:instantiation}
+% -----------------------------------------------------------------
+
+Building on the observations and insights from the previous section, we propose \textbf{T}emporal \textbf{C}urriculum \textbf{O}n-Policy \textbf{D}istillation~(\ours), a principled approach that controls the trajectory depth of agent interactions during the training process.
+% controls the trajectory depth exposed to the student during training. 
+Specifically, we introduce two variants: \ours-F2B and \ours-B2F, which explicitly impose step constraints in forward and reverse curricula, respectively.
+% designed to optimize on-policy distillation in multi-turn agents. 
+% The core idea is to control the interaction steps within a capability-aware horizon: the student first learns from a small number of steps at the beginning of training, and progressively increases the number of interaction steps throughout training, enabling it to handle more complex multi-turn interactions.
+
+
+
+\textbf{Forward-to-Backward Induced \oursfull (\ours-F2B).}
+We implement a "shallow-to-deep" curriculum by restricting the maximum interaction steps of a trajectory during the training process. 
+As shown in Figure~\ref{fig:method}(middle), in our \ours-F2B, the student policy $\pi_\theta$ rolls out for maximum $k$ steps to finish the task, where k starts from a small number and progressively increases to a larger one, the objective is as follows:
+% after which the trajectory is \textbf{truncated} without further environment interaction:
+\begin{equation}
+\mathcal{L}_{TCOD\_F2B}(\theta) = \mathbb{E}_{\tau \sim \pi_\theta} \left[ \sum_{t=0}^{k-1} \mathcal{D}_{KL} \left( \pi_\phi(a_t|h_t) \parallel \pi_\theta(a_t|h_t) \right) \right],
+\end{equation}
+% By concentrating the learning signal on the early turns where the accumulation of errors is not much, \ours-F2B builds a robust foundation. 
+where the student first focuses on early-turn learning signals and then progressively completes the task end-to-end, mitigating compounding errors and preventing horizon-induced KL collapse.
+However, determining the optimal step size and starting point is challenging, as different environments and models exhibit varying reasoning capabilities. 
+To address this, we begin with linear pacing across the training step:
+\begin{equation}
+k = k_{\text{start}} + \lfloor n / \eta \rfloor, \quad n \in {1, \dots, N},
+\label{eq:pacing}
+\end{equation}
+where $n$ represents the current training step and $N$ is the total number of training steps, $k_{\text{start}}$ defines the initial number of interaction steps and $\eta$ controls the curriculum’s growth rate. 
+This approach requires only minor code changes. The whole algorithm is as follows:
+% The whole algorithm of \ours-F2B can be seen in Appendix~\ref{}.
+% by ensuring the student is never forced to provide gradients on OOD (Out-Of-Distribution) states that it cannot yet reach reliably. 
+
+\begin{algorithm}[h]
+\caption{Temporal Curriculum On-Policy Distillation: \ours-F2B}
+\label{alg:tcod_f2b}
+\begin{algorithmic}[1]
+\STATE \textbf{Input:} Student $\pi_\theta$, Teacher $\pi_\phi$, Environment $\mathcal{E}$,
+       total steps $N$, curriculum parameters $k_{\text{start}}$, $\eta$
+\STATE \textbf{Output:} Trained student policy $\pi_\theta$
+\FOR{$n = 1, 2, \dots, N$}
+    \STATE $k \leftarrow \min\!\left(k_{\text{start}} + \lfloor n / \eta \rfloor,\ T_{\max}\right)$
+    \STATE Initialize $s_0 \sim \mathcal{E}$, history $h_0 \leftarrow \emptyset$
+    \FOR{$t = 0, 1, \dots, k-1$}
+        \STATE Sample $a_t \sim \pi_\theta(\cdot \mid h_t)$; execute $a_t$; update $h_{t+1}$
+    \ENDFOR
+    \STATE $\mathcal{L} \leftarrow \sum_{t=0}^{k} \mathcal{D}_{\mathrm{KL}}\!\left(\pi_\phi(a_t \mid h_t) \,\|\, \pi_\theta(a_t \mid h_t)\right)$
+    \STATE Update $\theta \leftarrow \theta - \nabla_\theta \mathcal{L}$
+\ENDFOR
+\RETURN $\pi_\theta$
+\end{algorithmic}
+\end{algorithm}
+% # TCOD (F2B): Only 3 lines adding
+% \begin{algorithm}[h]
+%     \caption{Code Change for \texttt{\ours(F2B)}}
+%     \label{alg:f2b_code}
+% \begin{minted}[fontsize=\small]{python}
+% def tcod_f2b_env_step(max_env_step, n, k_start, eta):
+%     k = k_start + n/eta
+%     return min(max_env_step, k)
+% \end{minted}
+% \end{algorithm}
+% This implementation ensures that the student only learns from states that are reachable under its current capabilities, preventing the accumulation of errors that destabilize the KL signal.
+
+
+
+Furthermore, to better exploit the teacher model, we propose \ours-B2F, which leverages the teacher to avoid early-turn error accumulation.
+
+\textbf{Backward-to-Forward Induced \oursfull (\ours-B2F).}
+In this variant, the teacher policy $\pi_\phi$ acts as a ``navigator.'' 
+We initialize the environment to an intermediate state obtained by executing the initial prefix of a pre-collected successful trajectory $\tau^*$ using the teacher policy $\pi_\phi$, and let the agent start interaction from this state. 
+Specifically, as shown in Figure~\ref{fig:method}, the teacher executes the first $L-k$ steps of its successful trajectory $\tau^*$ in the environment, after which the student policy $\pi_\theta$ takes over from this immediate state to continue planning and execution. The objective is as follows:
+\begin{equation}
+\mathcal{L}_{\text{TCOD\_B2F}}(\theta) = \mathbb{E}_{\tau \sim (\pi_\phi, \pi_\theta)} \left[ \sum_{t=L-k+1}^{T-1} \mathcal{D}_{KL} \left( \pi_\phi(a_t|h_t) \parallel \pi_\theta(a_t|h_t) \right) \right],
+\end{equation}
+where $L$ denotes the length of the successful trajectory $\tau^*$ for a given task, and $k$ is defined as in Equation~\ref{eq:pacing}, monotonically expanding until 
+the student completes the task end-to-end throughout training.
+This implementation is similarly lightweight, requiring only a simple warmup loop as shown in follows.
+\begin{algorithm}[h]
+\caption{Temporal Curriculum On-Policy Distillation: \ours-B2F}
+\label{alg:tcod_b2f}
+\begin{algorithmic}[1]
+\STATE \textbf{Input:} Student $\pi_\theta$, Teacher $\pi_\phi$, Environment $\mathcal{E}$,
+       total steps $N$, curriculum parameters $k_{\text{start}}$, $\eta$
+\STATE \textbf{Output:} Trained student policy $\pi_\theta$
+\STATE Pre-collect teacher successful trajectories $\mathcal{T}^* \leftarrow \{\tau^*\}$
+\FOR{$n = 1, 2, \dots, N$}
+    \STATE $k \leftarrow \min\!\left(k_{\text{start}} + \lfloor n / \eta \rfloor,\ L\right)$
+    \STATE Sample $\tau^* \in \mathcal{T}^*$ with length $L$; initialize $s_0 \sim \mathcal{E}$
+    \FOR{$t = 0, 1, \dots, L - k - 1$} 
+        \STATE Execute teacher action $a_t^*$ \textbf{(stop gradient)}; update $h_{t+1}$
+    \ENDFOR
+    \FOR{$t = L-k, \dots, L$}
+        \STATE Sample $a_t \sim \pi_\theta(\cdot \mid h_t)$; execute $a_t$; update $h_{t+1}$
+    \ENDFOR
+    \STATE $\mathcal{L} \leftarrow \sum_{t=L-k}^{L} \mathcal{D}_{\mathrm{KL}}\!\left(\pi_\phi(a_t \mid h_t) \,\|\, \pi_\theta(a_t \mid h_t)\right)$
+    \STATE Update $\theta \leftarrow \theta - \nabla_\theta \mathcal{L}$
+\ENDFOR
+\RETURN $\pi_\theta$
+\end{algorithmic}
+\end{algorithm}
+% # TCOD (B2F): Teacher-led warmup to the environment
+% # Student starts acting and learning from here
+% \begin{algorithm}[h]
+%     \caption{Code Change for \texttt{\ours(B2F)}}
+%     \label{alg:b2f_code}
+% \begin{minted}[fontsize=\small]{python}
+% def tcod_b2f_env(env, teacher_actions, n, k_start, eta):
+%     k = k_start + n/eta
+%     L = len(teacher_actions)
+%     if L-k < 0: return env
+%     for i in range(L-k):
+%         env.step(teacher_actions[i])
+%     return env 
+% \end{minted}
+% \end{algorithm}
+
+This mechanism effectively \textbf{bypasses compounding action errors} by ensuring the student only optimizes on trajectories initiated from successful, teacher-vetted prefixes. Crucially, the teacher steps of the trajectory do not contribute to the gradient, serving only to place the student on the ``doorstep of success.'' 
+Detailed algorithms are provided in Appendix~\ref{appendix:algorithm}.
+
+\textbf{Discussion of the train-test mismatch in \ours-B2F.}
+During training, the student starts from a teacher-navigated checkpoint, whereas at test time it must act end-to-end from scratch. 
+To this end, we gradually reduce the teacher's prefix from $L-1$ steps down to zero, ensuring that by the end of training the student executes the full trajectory from the initial state with no teacher intervention, fully aligning the training and 
+test distributions. 
+As shown in Appendix~\ref{app: b2f}, the end-to-end success rate on the test set increases steadily with training steps, confirming that the smooth curriculum transition effectively prevents catastrophic distribution shift in practice.
+
+
+\subsection{Asynchronous Training Details for Stability}
+\label{sec:implementation}
+
+While the core \ours framework is conceptually straightforward, several practical design choices significantly impact training stability and efficiency in real-world deployments. 
+All experiments were conducted on 8$\times$ NVIDIA H20 (96GB) GPUs. 
+We describe our key implementation strategies:
+
+\paragraph{Asynchronous Rollout and Training.}
+To maximize GPU utilization, we decouple trajectory collection and 
+model optimization into separate asynchronous processes. 
+We use a pool of \textbf{actor} processes for rollout to continuously sample trajectories, while a 
+central \textbf{learner} process for training uses these trajectories from a shared buffer and performs gradient updates. 
+We use a lock-free ring buffer to minimize synchronization overhead. 
+In our experiments, we allocate 4×H20 GPUs for actors and 2×H20 GPUs for learners.
+Moreover, we use the remaining 2×H20 GPUs for the teachers.
+
+\paragraph{Staleness-Aware Sub-trajectory Experience Replay.}
+To maximize sample efficiency in multi-turn environments, we decompose each complete trajectory into a set of recursive sub-trajectories. Specifically, for a trajectory of length $n$, we store each prefix sequence $\tau_{1:t} = (s_0, a_0, \dots, s_t)$ as an independent experience entry in the replay buffer for $t \in \{1, \dots, n\}$. 
+To prevent the input context from exceeding the model's effective memory limit, leading to training instability, 
+we encapsulate the interaction history within the prompt as a structured context.
+Consequently, the number of rollouts generated per batch is dynamic, depending on the varying lengths of collected trajectories. 
+% In our asynchronous training setting, these experiences may have been collected by an outdated policy $\pi_{\theta'}$ where $\theta' \neq \theta$. 
+% To maintain on-policy fidelity, each entry is tagged with a version number $v$.
+% We implement a staleness filter that discards any experience where $v_{\text{current}} - v > \Delta_{\text{max}}$. 
+In our asynchronous setting, each trajectory is tagged with the version number $n$ of the policy $\pi_{\theta_n}$ used for collection. 
+We implement a staleness filter that discards any experience where $n_{\text{current}} - n_{\text{old}} > \Delta_{\text{max}}$.
+Empirically, we find that $\Delta_{\text{max}} = 2$ provides an optimal balance between sample efficiency and the strictness of the on-policy constraint.
+
+
+\section{Experiments}
+% todo: 
+% - ablations on steps
+% - gpu hours 
+% next to table2
+
+% We design experiments to answer the following questions:
+In this section, we conduct experiments on various benchmarks to evaluate our approach. Mainly, we design the experiments to study the following key questions:
+
+
+\noindent{$\mathbf{Q1}$:} Compared to vanilla OPD, how does \ours 
+alleviate KL escalation and recover the performance for small student models, and how does it enhance training stability and the performance for the larger ones?
+
+\noindent{$\mathbf{Q2}$:} Can \ours enable the student to generalize effectively to tasks beyond the teacher's own capability boundary?
+
+\noindent{$\mathbf{Q3}$:} How sensitive is \ours to the growth rate 
+of the curriculum, and how does it compare to vanilla OPD in terms 
+of training efficiency?
+
+
+
+\subsection{Experimental Setup}
+
+\begin{wraptable}{r}{0.5\textwidth}
+\vspace{-10pt}
+\centering
+\scriptsize
+\setlength{\tabcolsep}{1.5pt}
+% \captionsetup{font=small}
+\caption{\textbf{Summary of the benchmarks used}.}
+\vspace{-1em}
+\begin{tabular}{lccccc}
+\toprule
+\textbf{Benchmark}  & \textbf{OOD} & \textbf{Type} & \textbf{Difficulty}  & \textbf{Max Turns} \\
+\midrule
+ALFWorld-seen & & Embodied & Easy & $30$ \\
+ALFWorld-unseen & \cmark & Embodied & Medium & $30$ \\
+ALFWorld-hard  & \cmark & Embodied & Hard  & $30$ \\
+Webshop  & & E-commerce & Medium   & $15$ \\
+ScienceWorld  & & Scientific Reason & Hard  & $30$ \\
+\bottomrule
+\end{tabular}
+\label{tab:dataset_summary}
+\vspace{-10pt}
+\end{wraptable}
+
+% \todo{How about a brief introduction to "Baselines". And we really should add some more baseline here if the results are ready.}
+
+\textbf{Benchmarks.} 
+We conduct experiments on three benchmarks including the embodied navigation environment ALFWorld~\citep{shridhar2020alfworld}, e-commerce platform WebShop~\citep{yao2022webshop}, and scientific reasoning ScienceWorld~\citep{wang2022scienceworld} as illustrated in Table~\ref{tab:dataset_summary}, spanning a spectrum of reasoning levels from simple to complex.
+Max turns means the maximum exploration steps for each task.
+For ALFWorld, we evaluate on both the \textit{seen} and 
+\textit{unseen} splits, where the unseen split contains novel room 
+layouts and object combinations not encountered during training, 
+serving as our OOD evaluation.
+We additionally construct a \textbf{Hard} set comprising 
+tasks where the teacher fails under pass@10 sampling on the train split, to test 
+whether \ours can generalize beyond the teacher's own capability 
+boundary.
+More benchmark details refer to Appendix~\ref{app: bench}.
+% This set serves as a more challenging OOD evaluation to test whether \ours can generalize beyond the teacher's own capability boundary.
+% is a text-based embodied environment requiring navigation and object manipulation across six categories of household tasks. ALFWorld provides \textit{seen} and \textit{unseen} splits: the seen split tests performance in environments present during training, while the unseen split 
+
+\begin{table*}[t]
+\centering
+% \captionsetup{font=small}
+\caption{\textbf{Out-of-domain and hard set performance comparison} between \ours and OPD on ALFWorld. 
+SR is success rate (\%) and Rounds is averge action rounds per task.
+% We report  and average Action Rounds on ALFworld.
+% For Success Rate, higher is better; for Rounds, lower is better. 
+The best result is \textbf{bolded} and the second-best is \underline{underlined}. {\color{mygreen}Green} and {\color{myred}red} subscripts indicate improvement and degradation over Vanilla OPD, respectively.
+}
+% \vspace{-1em}
+\label{tab:main_alfworld}
+\resizebox{\linewidth}{!}{
+\begin{tabular}{lcccccc}
+\toprule
+\multirow{2}{*}{\textbf{Method}}
+    & \multicolumn{2}{c}{\textbf{Valid Seen}}
+    & \multicolumn{2}{c}{\textbf{Valid Unseen}}
+    & \multicolumn{2}{c}{\textbf{Hard}} \\
+\cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+    & \textbf{SR} $\uparrow$ & \textbf{Rounds} $\downarrow$
+    & \textbf{SR} $\uparrow$ & \textbf{Rounds} $\downarrow$
+    & \textbf{SR} $\uparrow$ & \textbf{Rounds} $\downarrow$ \\
+\midrule
+\rowcolor{teachercolor}
+Qwen2.5-7B-RL (Teacher)
+    & 85.71 & 10.61
+    & 76.87 & 13.06
+    & 6.61  & 27.31 \\
+\midrule
+\rowcolor{groupcolor}
+\multicolumn{7}{c}{\textit{Qwen2.5-3B}~{\small\textcolor{gray}{(Student)}}} \\
+\quad Zero-Shot
+    & 7.86  & 28.73
+    & 2.24  & 29.63
+    & 0.83  & 29.88 \\
+\quad SFT
+    & 32.14 & 22.85
+    & 25.37 & 24.16
+    & 4.96  & 29.12 \\
+    % Off-policy Distillation \\
+   
+\quad Vanilla OPD
+    & 65.72             & 14.73
+    & 60.45             & 16.21
+    & \underline{10.74} & 28.64 \\
+    % veto \\
+    \midrule
+\rowcolor{ourscolor}
+\quad \ours~(B2F)
+    & \underline{77.86}$_{\color{mygreen}\uparrow 12.14}$
+    & \underline{12.57}$_{\color{mygreen}\downarrow 2.16}$
+    & \underline{70.90}$_{\color{mygreen}\uparrow 10.45}$
+    & \underline{14.56}$_{\color{mygreen}\downarrow 1.65}$
+    & \textbf{13.22}$_{\color{mygreen}\uparrow 2.48}$
+    & \textbf{28.16}$_{\color{mygreen}\downarrow 0.48}$ \\
+\rowcolor{ourscolor}
+\quad \ours~(F2B)
+    & \textbf{81.43}$_{\color{mygreen}\uparrow 15.71}$
+    & \textbf{11.76}$_{\color{mygreen}\downarrow 2.97}$
+    & \textbf{79.19}$_{\color{mygreen}\uparrow 18.74}$
+    & \textbf{12.47}$_{\color{mygreen}\downarrow 3.74}$
+    & 9.92$_{\color{myred}\downarrow 0.82}$
+    & \underline{28.57}$_{\color{mygreen}\downarrow 0.07}$ \\
+\midrule
+\rowcolor{groupcolor}
+\multicolumn{7}{c}{\textit{Qwen2.5-7B}~{\small\textcolor{gray}{(Student)}}} \\
+\quad Zero-Shot
+    & 9.29  & 28.34
+    & 8.96  & 28.46
+    & 1.65  & 29.77 \\
+\quad SFT
+    & 54.29 & 18.92
+    & 48.73 & 20.11
+    & 8.26  & 28.73 \\
+\quad Vanilla OPD
+    & 75.37             & \underline{13.18}
+    & 72.14             & 13.37
+    & 13.22             & 27.89 \\
+ 
+\midrule
+\rowcolor{ourscolor}
+\quad \ours~(B2F)
+    & \textbf{86.43}$_{\color{mygreen}\uparrow 11.06}$
+    & \textbf{11.06}$_{\color{mygreen}\downarrow 2.12}$
+    & \textbf{77.61}$_{\color{mygreen}\uparrow 5.47}$
+    & \textbf{13.16}$_{\color{mygreen}\downarrow 0.21}$
+    & \textbf{20.66}$_{\color{mygreen}\uparrow 7.44}$
+    & \textbf{27.07}$_{\color{mygreen}\downarrow 0.82}$ \\
+\rowcolor{ourscolor}
+\quad \ours~(F2B)
+    & \underline{82.14}$_{\color{mygreen}\uparrow 6.77}$
+    & 13.22$_{\color{myred}\uparrow 0.04}$
+    & \underline{76.12}$_{\color{mygreen}\uparrow 3.98}$
+    & \underline{13.22}$_{\color{mygreen}\downarrow 0.15}$
+    & \underline{18.18}$_{\color{mygreen}\uparrow 4.96}$
+    & \underline{27.37}$_{\color{mygreen}\downarrow 0.52}$ \\
+\bottomrule
+\end{tabular}
+}
+% \vspace{-1em}
+\end{table*}
+
+\begin{figure*}[t]
+\centering
+% \captionsetup{font=small}
+\begin{subfigure}[b]{0.24\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figure/exps/exp3_rollout_env_done_mean.pdf}
+\caption{Success Rates}
+\label{fig:sr1}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.24\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figure/exps/exp3_rollout_kl_divergence_mean.pdf}
+\caption{KL Divergence}
+\label{fig:kl1}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.24\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figure/exp3/exp3_rollout_env_done_mean.pdf}
+\caption{Success Rates}
+\label{fig:sr2}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.24\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figure/exp3/exp3_rollout_kl_divergence_mean.pdf}
+\caption{KL Divergence}
+\label{fig: kl2}
+\end{subfigure}
+% \begin{subfigure}[b]{0.24\textwidth}
+% \centering
+% \includegraphics[width=\textwidth]{figure/exps/exp3_rollout_env_rounds_mean.pdf}
+% \caption{Action Rounds}
+% \label{fig:rounds_training}
+% \end{subfigure}
+% \hfill
+% \begin{subfigure}[b]{0.24\textwidth}
+% \centering
+% \includegraphics[width=\textwidth]{figure/exps/exp3_critic_advantages_mean.pdf}
+% \caption{Advantages}
+% \label{fig:rounds_training}
+% \end{subfigure}
+% \vspace{-1em}
+\caption{
+\textbf{Training Dynamics comparison of \ours and OPD on ALFWorld.} 
+(a) and (b) show the success rate and KL divergence, respectively, for Qwen2.5-7B as the student. 
+\ours maintains a higher success rate and more stable KL divergence. 
+(c) and (d) show the success rate and KL divergence, respectively, for Qwen2.5-1.5B as the student model.
+\ours-F2B under $\eta=3,6$ mitigate the success rate collapse and kl escalation.
+}
+\vspace{-1em}
+% \vspace{-2em}
+% (a)(b) On the larger student model, \ours achieves faster convergence and a higher final 
+% success rate compared to vanilla OPD, while maintaining a more stable KL divergence 
+% curve throughout training. 
+% (c)(d) On the smaller student model, rather than the severe KL divergence spikes 
+% that drive the success rate to collapse near zero as observed in Fig.~\ref{fig:challenges}, 
+% \ours~(F2B) maintains a controlled KL divergence trajectory (despite an initial increase) 
+% and achieves a steadily improving success rate.
+% (b) POPD maintains stable KL divergence throughout training, while vanilla OPD exhibits severe spikes that correlate with performance drops. 
+\label{fig:training_dynamics_main}
+\end{figure*}
+
+
+
+\textbf{Training Details.}
+For the main experiments on ALFWorld, we use Qwen2.5-3B and Qwen2.5-7B as student models, with Qwen2.5-7B fine-tuned via 
+GRPO on the ALFWorld domain serving as the teacher.
+For the cross-benchmark evaluation, we adopt Qwen3-1.7B and Qwen3-4B as students, with Qwen3-30B-A3B-Instruct as the teacher.
+All experiments are conducted on 8$\times$ NVIDIA H20 GPUs.
+% , where 4 GPUs are allocated for asynchronous rollout actors, 2 for the learner, and 2 for the teacher. 
+We implement \ours based on the Reinforcement Fine-Tuning framework Trinity-RFT~\citep{pan2025trinityrftgeneralpurposeunifiedframework}. 
+% We train for 250 iterations with a learning rate of 1e-6, an explorer batch size of 32, and a trainer batch size of 64. 
+For expert trajectory collection for \ours-B2F initialization, we adopt a pass@10 sampling strategy using the teacher model, retaining only successful trajectories. 
+For simplicity, we fix $k_{\text{start}} = 1$ and $\eta=2$ and examine the impact of different $\eta$ from $\{2, 4, 6\}$ in Sec~\ref{sec: ablation}. 
+
+% We apply a staleness filter with $\Delta_{\text{max}} = 2$ to discard off-policy trajectories that are too stale. 
+% \textbf{Action Rounds} measures the average number of environment interaction steps required to complete a task, reflecting the efficiency of the learned policy. For ScienceWorld, we binarize the original 0--100 task score into a success indicator by treating a score of 100 as task success.
+
+For baselines, we report the zero-shot student as the empirical lower bound and the teacher policy as the theoretical upper bound (Oracle). Moreover, we compare \ours with standard knowledge transfer paradigms, including supervised fine-tuning (SFT) and vanilla on-policy distillation (OPD). 
+For evaluation, we test all the benchmarks using \textbf{success rate (SR)}, which measures the percentage of tasks completed successfully, where task completion is treated as a binary outcome. 
+More details are provided in Appendix~\ref{appendix:hyperparameters}.
+% \paragraph{Baselines.} We compare against:
+% \begin{itemize}
+% \item \textbf{Closed-source models}: GPT-4, Gemini-Pro, Qwen-Max (zero-shot prompting with ReAct).
+% \item \textbf{Supervised Fine-Tuning (SFT)}: Training on teacher trajectories.
+% \item \textbf{GRPO}~\cite{}: Group relative policy optimization with environment rewards.
+% \item \textbf{Vanilla OPD}: Standard on-policy distillation without curriculum.
+% \end{itemize}
+
+% \paragraph{Implementation.} We use Qwen2.5-3B and Qwen3-4B as student models, with GPT-4 as the teacher. Training uses 8× A100 GPUs with the implementation details described in Section~\ref{sec:implementation}. All results are averaged over 3 random seeds.
+
+% \paragraph{Expert Trajectory Collection.} For constructing the training data, we employ a pass@10 sampling strategy using the teacher model (GPT-4). For each task, we sample 10 trajectories and retain those that successfully complete the task. The successful trajectories' actions are stored as expert demonstrations. Tasks where all 10 attempts fail are moved to a separate "hard" set and used for evaluation only, ensuring our training set contains only tasks with at least one successful expert trajectory. This filtering is crucial for POPD, as the teacher policy must be able to provide valid guidance during the teacher-controlled steps in both B2F and F2B regimes.
+
+\subsection{$\mathbf{Q1}$: Alleviating KL Escalation and Improving Performance}
+\label{subsec: performance}
+
+% \begin{table}[t]
+% \centering
+% \caption{%
+%     \textbf{Performance Across Benchmarks on Bigger model teachers.} 
+% We report Success Rate (\%) on validation sets. 
+% Task difficulty monotonically increases from ALFWorld to WebShop, and then to ScienceWorld. 
+% Within each model family, the best result is \textbf{bolded} and the second-best is \underline{underlined}. 
+% {\color{mygreen}Green} and {\color{myred}red} subscripts indicate improvement and degradation over Vanilla OPD, respectively.
+% }
+% \label{tab:cross_benchmark}
+% \resizebox{0.8\linewidth}{!}{
+% \begin{tabular}{lcccc}
+% \toprule
+% \textbf{Method}
+%     & \textbf{WebShop} $\uparrow$
+%     & \textbf{ALFWorld} $\uparrow$
+%     & \textbf{ScienceWorld} $\uparrow$
+%     & \textbf{Avg} $\uparrow$ \\
+% \midrule
+% \rowcolor{teachercolor}
+% Qwen3-30B (Teacher)
+%     & 32.84 & 39.57 & 18.42 & 30.28 \\
+% \midrule
+% \rowcolor{groupcolor}
+% \multicolumn{5}{c}{\textit{Qwen3-1.7B}~{\small\textcolor{gray}{(Student)}}} \\
+% \quad Vanilla OPD
+%     & 0.14  & 0.32  & 0.05  & 0.17  \\
+% \midrule
+% \rowcolor{ourscolor}
+% \quad \ours~(B2F)k=2
+%     & \underline{20.54}$_{\color{mygreen}\uparrow 20.40}$
+%     & \underline{24.55}$_{\color{mygreen}\uparrow 24.23}$
+%     & \underline{10.82}$_{\color{mygreen}\uparrow 10.77}$
+%     & \underline{18.64}$_{\color{mygreen}\uparrow 18.47}$ \\
+%     \ours~(B2F)k=4 & 21.12 & 23.87 & 11.34\\
+% \ours~(B2F)k=6 & 20.33 & 24.91 & 10.65 \\
+% \rowcolor{ourscolor}
+% \quad \ours~(F2B)k=2
+%     & \textbf{21.15}$_{\color{mygreen}\uparrow 21.01}$
+%     & \textbf{24.12}$_{\color{mygreen}\uparrow 23.80}$
+%     & \textbf{10.45}$_{\color{mygreen}\uparrow 10.40}$
+%     & \textbf{18.57}$_{\color{mygreen}\uparrow 18.40}$ \\
+%     \ours~(F2B)k=4 & 20.44 & 25.03 & 9.22\\
+% \ours~(F2B)k=6 & 21.78 & 23.65 & 11.08\\
+% \midrule
+% \rowcolor{groupcolor}
+% \multicolumn{5}{c}{\textit{Qwen3-4B}~{\small\textcolor{gray}{(Student)}}} \\
+% \quad Vanilla OPD
+%     & 30.12             & 36.85             & 15.95             & 27.64 \\
+% \midrule
+% \rowcolor{ourscolor}
+% \quad \ours~(B2F) k=2
+%     & \underline{32.15}$_{\color{mygreen}\uparrow 2.03}$
+%     & \underline{38.62}$_{\color{mygreen}\uparrow 1.77}$
+%     & \underline{17.46}$_{\color{mygreen}\uparrow 1.51}$
+%     & \underline{29.41}$_{\color{mygreen}\uparrow 1.77}$ \\
+% \ours~(B2F)k=4 & 29.21 & 37.84 & 16.73 \\
+% \ours~(B2F)k=6 & 29.05 & 39.35 & 15.88\\
+% \rowcolor{ourscolor}
+% \quad \ours~(F2B)
+%     & \textbf{31.81}$_{\color{mygreen}\uparrow 1.69}$
+%     & \textbf{38.95}$_{\color{mygreen}\uparrow 2.10}$
+%     & \textbf{17.85}$_{\color{mygreen}\uparrow 1.90}$
+%     & \textbf{29.54}$_{\color{mygreen}\uparrow 1.90}$ \\
+%     \ours~(B2F)k=4 & 30.54 & 37.62& 17.23 \\
+% \ours~(B2F)k=6 & 29.87 & 37.88 & 17.12\\
+% \bottomrule
+% \end{tabular}
+% }
+% \end{table}
+
+\begin{table}[t]
+\centering
+% \captionsetup{font=small}
+\caption{%
+    \textbf{Performance comparison between \ours-F2B/B2F and OPD.} 
+We report Success Rate (\%) on validation sets. 
+% SR is success rate (\%) and 
+$\eta$ is the curriculum’s growth rate.
+% Task difficulty monotonically increases from ALFWorld to WebShop, and then to ScienceWorld. 
+The best result is \textbf{bolded} and the second-best is \underline{underlined}. 
+{\color{mygreen}Green} and {\color{myred}red} subscripts indicate improvement and degradation over Vanilla OPD, respectively.
+}
+% \vspace{-1em}
+\label{tab:cross_benchmark}
+\resizebox{0.85\linewidth}{!}{
+\begin{tabular}{lcccc}
+\toprule
+\textbf{Method}
+    & \textbf{WebShop} $\uparrow$
+    & \textbf{ALFWorld} $\uparrow$
+    & \textbf{ScienceWorld} $\uparrow$
+    & \textbf{Avg} $\uparrow$ \\
+\midrule
+\rowcolor{teachercolor}
+Qwen3-30B (Teacher)
+    & 32.84 & 39.57 & 18.42 & 30.28 \\
+\midrule
+\rowcolor{groupcolor}
+\multicolumn{5}{c}{\textit{Qwen3-1.7B}~{\small\textcolor{gray}{(Student)}}} \\
+\quad Vanilla OPD
+    & 0.14  & 0.32  & 0.05  & 0.17  \\
+% \quad off-policy distillation \\
+\midrule
+\rowcolor{b2fcolor}
+\quad \ours~(B2F) $\eta$=2
+    & \underline{20.54}$_{\color{mygreen}\uparrow 20.40}$
+    & \underline{24.55}$_{\color{mygreen}\uparrow 24.23}$
+    & \underline{10.82}$_{\color{mygreen}\uparrow 10.77}$
+    & \underline{18.64}$_{\color{mygreen}\uparrow 18.47}$ \\
+\rowcolor{b2fcolor}
+\quad \ours~(B2F) $\eta$=4
+    & \textbf{21.12}$_{\color{mygreen}\uparrow 20.98}$
+    & 23.87$_{\color{mygreen}\uparrow 23.55}$
+    & \textbf{11.34}$_{\color{mygreen}\uparrow 11.29}$
+    & \textbf{18.78}$_{\color{mygreen}\uparrow 18.61}$ \\
+\rowcolor{b2fcolor}
+\quad \ours~(B2F) $\eta$=6
+    & 20.33$_{\color{mygreen}\uparrow 20.19}$
+    & \textbf{24.91}$_{\color{mygreen}\uparrow 24.59}$
+    & 10.65$_{\color{mygreen}\uparrow 10.60}$
+    & 18.63$_{\color{mygreen}\uparrow 18.46}$ \\
+\midrule
+\rowcolor{f2bcolor}
+\quad \ours~(F2B) $\eta$=2
+    & \underline{21.15}$_{\color{mygreen}\uparrow 21.01}$
+    & \underline{24.12}$_{\color{mygreen}\uparrow 23.80}$
+    & \underline{10.45}$_{\color{mygreen}\uparrow 10.40}$
+    & \underline{18.57}$_{\color{mygreen}\uparrow 18.40}$ \\
+\rowcolor{f2bcolor}
+\quad \ours~(F2B) $\eta$=4
+    & 20.44$_{\color{mygreen}\uparrow 20.30}$
+    & \textbf{25.03}$_{\color{mygreen}\uparrow 24.71}$
+    & 9.22$_{\color{mygreen}\uparrow 9.17}$
+    & 18.23$_{\color{mygreen}\uparrow 18.06}$ \\
+\rowcolor{f2bcolor}
+\quad \ours~(F2B) $\eta$=6
+    & \textbf{21.78}$_{\color{mygreen}\uparrow 21.64}$
+    & 23.65$_{\color{mygreen}\uparrow 23.33}$
+    & \textbf{11.08}$_{\color{mygreen}\uparrow 11.03}$
+    & \textbf{18.84}$_{\color{mygreen}\uparrow 18.67}$ \\
+\midrule
+\rowcolor{groupcolor}
+\multicolumn{5}{c}{\textit{Qwen3-4B}~{\small\textcolor{gray}{(Student)}}} \\
+\quad Vanilla OPD
+    & 30.12 & 36.85 & 15.95 & 27.64 \\
+% \quad off-policy distillation \\
+\midrule
+\rowcolor{b2fcolor}
+\quad \ours~(B2F) $\eta$=2
+    & \textbf{32.15}$_{\color{mygreen}\uparrow 2.03}$
+    & \underline{38.62}$_{\color{mygreen}\uparrow 1.77}$
+    & \underline{17.46}$_{\color{mygreen}\uparrow 1.51}$
+    & \textbf{29.41}$_{\color{mygreen}\uparrow 1.77}$ \\
+\rowcolor{b2fcolor}
+\quad \ours~(B2F) $\eta$=4
+    & 29.21$_{\color{myred}\downarrow 0.91}$
+    & 37.84$_{\color{mygreen}\uparrow 0.99}$
+    & \textbf{16.73}$_{\color{mygreen}\uparrow 0.78}$
+    & 27.93$_{\color{mygreen}\uparrow 0.29}$ \\
+\rowcolor{b2fcolor}
+\quad \ours~(B2F) $\eta$=6
+    & 29.05$_{\color{myred}\downarrow 1.07}$
+    & \textbf{39.35}$_{\color{mygreen}\uparrow 2.50}$
+    & 15.88$_{\color{myred}\downarrow 0.07}$
+    & \underline{28.09}$_{\color{mygreen}\uparrow 0.45}$ \\
+\midrule
+\rowcolor{f2bcolor}
+\quad \ours~(F2B) $\eta$=2
+    & \textbf{31.81}$_{\color{mygreen}\uparrow 1.69}$
+    & \textbf{38.95}$_{\color{mygreen}\uparrow 2.10}$
+    & \textbf{17.85}$_{\color{mygreen}\uparrow 1.90}$
+    & \textbf{29.54}$_{\color{mygreen}\uparrow 1.90}$ \\
+\rowcolor{f2bcolor}
+\quad \ours~(F2B) $\eta$=4
+    & \underline{30.54}$_{\color{mygreen}\uparrow 0.42}$
+    & 37.62$_{\color{mygreen}\uparrow 0.77}$
+    & \underline{17.23}$_{\color{mygreen}\uparrow 1.28}$
+    & \underline{28.46}$_{\color{mygreen}\uparrow 0.82}$ \\
+\rowcolor{f2bcolor}
+\quad \ours~(F2B) $\eta$=6
+    & 29.87$_{\color{myred}\downarrow 0.25}$
+    & \underline{37.88}$_{\color{mygreen}\uparrow 1.03}$
+    & 17.12$_{\color{mygreen}\uparrow 1.17}$
+    & 28.29$_{\color{mygreen}\uparrow 0.65}$ \\
+\bottomrule
+\end{tabular}
+}
+% \vspace{-1em}
+\end{table}
+
+
+
+% \paragraph{\ours consistently outperforms OPD across benchmarks and model sizes.}
+In Table~\ref{tab:main_alfworld}, we present results of \ours on ALFWorld with students (Qwen2.5-3B, Qwen2.5-7B) and a GRPO-trained Qwen2.5-7B teacher, reporting both success rate (SR) and average action steps.
+We find that \ours-F2B and B2F substantially outperform vanilla OPD and SFT across model scales. 
+Notably, \ours reduces the average number of action steps by $2.97$ steps, while improving SR by up to 15.71 over OPD, suggesting that \textbf{curriculum learning from the teacher over trajectories leads to better performance}.
+% Furthermore, reducing redundant exploration steps shortens decoding at inference time, thereby also improving training efficiency.
+Figure~\ref{fig:sr1}\&\ref{fig:kl1}\&\ref{fig:advantage} further show that \ours achieves faster convergence in success rate and advantage, while maintaining more stable KL divergence than vanilla OPD.
+% Valid Seen and 79.19\% on Valid Unseen, compared to 65.72\% and 60.45\% for vanilla OPD, while also requiring fewer action rounds. 
+% With Qwen2.5-7B, \ours-B2F reaches 86.43\% on Valid Seen, approaching the teacher's performance of 85.71\%. 
+% Table~\ref{tab:cross_benchmark} further confirms these gains across three benchmarks. 
+% Notably, with Qwen3-1.7B, vanilla OPD completely collapses to near-zero SR, while \ours maintains meaningful performance, achieving an average SR of 18.64\% (B2F) and 18.57\% (F2B). 
+% With Qwen3-4B, where vanilla OPD remains functional, \ours still provides consistent improvements across all three domains.
+
+\textbf{Different Benchmarks and Model Sizes.}
+In Table~\ref{tab:cross_benchmark}, we evaluate \ours across three benchmarks using students Qwen3-1.7B and Qwen3-4B with a Qwen3-30B-A3B-Instruct teacher.
+Overall, \ours-F2B and \ours-B2F achieve comparable performance to vanilla OPD.
+% , with an average improvement of 1.77 in success rate for Qwen3-4B.
+Moreover, 
+% for small models (Qwen3-1.7B), OPD exhibits KL escalation and success rate collapse (Figure~\ref{fig:vanilla_kl}\&\ref{fig:vanilla_success}). In contrast, 
+as illustrated in Figure~\ref{fig:sr2}\&\ref{fig: kl2}, \ours-F2B under both $\eta=\{3,6\}$ \textbf{maintains stable KL throughout training and achieves an increasing success rate, effectively mitigating KL escalation and improving average success rate by 18.67.}
+Furthermore, Figure~\ref{fig:max length}\&\ref{fig:gradient_norm} shows additional training metrics, where \ours can recover from an explosion in response length, while the policy gradient loss decreases smoothly.
+% For larger models (Qwen2.5-3B, 7B and Qwen3-4B), vanilla OPD does not collapse outright, but exhibits a high initial KL and requires significantly more action rounds at the start of training, only slowly reducing over time. 
+% \ours, on the other hand, begins training with a lower KL and maintains consistently smaller action rounds throughout, converging faster and learning more efficient policies with fewer environment interactions.
+
+
+
+
+
+\subsection{$\mathbf{Q2}$: Generalizing Beyond the Teacher's Capability Boundary}
+\label{subsec: beyond}
+
+\begin{figure}[t]
+\centering
+% \captionsetup{font=small}
+\begin{subfigure}[b]{0.24\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figure/exps/exp3_rollout_env_rounds_mean.pdf}
+\caption{Action Rounds}
+\label{fig:rounds_training}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.24\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figure/exps/exp3_critic_advantages_mean.pdf}
+\caption{Advantages}
+\label{fig:advantage}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.24\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figure/exp3/exp3_response_length_max.pdf}
+\caption{Max Response length}
+\label{fig:max length}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.24\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figure/exp3/exp3_actor_pg_loss.pdf}
+\caption{Policy Gradient Loss}
+\label{fig:gradient_norm}
+\end{subfigure}
+% \vspace{-1em}
+\caption{\textbf{Further Analysis of \ours-F2B/B2F on ALFWorld.} 
+(a)(b) is the average action rounds,  advantages during training for Qwen2.5-7B as the student.
+\ours effectively reduces the action rounds and achieves faster advantage convergence.
+(c)(d) is the maximum response length, policy gradient loss during training for Qwen2.5-1.5B as the student model.
+\ours mitigates redundant responses while maintaining training stability. 
+% \todo{Increase font size and line width. The size is too small here.}
+}
+\vspace{-1em}
+% (a) Compared to vanilla OPD, \ours exhibits smaller average action rounds throughout 
+% training from begining, leading to computationally efficient for rollouts. 
+% (b) \ours demonstrates faster convergence in the advantages than vanilla OPD throughout the training process. 
+% (c)(d) Compared to the failure mode of vanilla OPD in Fig.~\ref{fig:challenges}, 
+% \ours~(F2B) exhibits a more stable maximum response length and a steadily decreasing 
+% gradient norm, under both $k{=}3$ and $k{=}6$ settings.
+% student use less response length to avoid the opd, which yeials kl stable/degrade, pg loss degrade, but the env done reward stable worse, not increase.
+% (a) Vanilla OPD exhibits severe KL divergence spikes (red) that destabilize training, while SFT maintains stable but low KL (blue). (b) These spikes correlate with success rate collapse, where the student fails to complete tasks. (c) Multi-turn episodes accumulate KL across $T$ turns, amplifying the divergence. (d) High KL leads to gradient explosion, causing optimization instability.
+\label{fig:challenges}
+\end{figure}
+
+
+Beyond the performance gains and KL stability achieved by \ours, 
+we further investigate whether \ours can enable the student to surpass the teacher itself.
+Table~\ref{tab:main_alfworld} reports performance on both the unseen environment split and the hard split.
+Specifically, the hard split comprises 121 challenging tasks from ALFWorld where the teacher performs poorly.
+% , where the teacher fails under pass@10 sampling.
+% , where the train hard split comprises 121 tasks from ALFWorld 
+On the unseen split, \ours already outperforms the teacher by up to 2.5 points in SR.
+More surprisingly, on the Train Hard split, both \ours-B2F and \ours-F2B substantially exceed the teacher's SR of 6.61, with \ours-B2F achieving a gain of up to 14 points.
+This demonstrates that \textbf{\ours does not merely imitate the teacher, but develops a more robust policy that generalizes beyond the teacher's capability boundary.}
+% This is a surprising finding---a student model smaller than the teacher, trained purely via progressive distillation, can generalize to tasks that the teacher itself cannot reliably solve. 
+
+% \begin{findingbox}{Finding1: \ours Overcomes KL Escalation and Generalizes Beyond the Teacher}
+% \ours consistently outperforms vanilla OPD across benchmarks, model sizes, and difficulty levels. Critically, it maintains stable training even when vanilla OPD collapses, and generalizes to OOD tasks that exceed the teacher's own capability.
+% \end{findingbox}
+
+
+% \paragraph{Progression direction should match student capacity and task difficulty.}
+% Comparing \ours-F2B and \ours-B2F, we observe a consistent pattern across benchmarks. With the weaker 3B student, F2B outperforms B2F on both Valid Seen (81.43\% vs.\ 77.86\%) and Valid Unseen (79.19\% vs.\ 70.90\%), suggesting that weaker models benefit more from building distributional robustness from the early steps of the trajectory. With the stronger 7B student, B2F takes the lead on Valid Seen (86.43\% vs.\ 82.14\%), and B2F also consistently outperforms F2B on the Train Hard split across both model sizes, indicating that stronger models and harder tasks benefit more from the teacher's scaffolding, which provides denser reward signals near successful terminal states. In practice, we recommend F2B as the default for smaller or less capable students, and B2F when the student has sufficient capacity or the task is particularly challenging.
+
+
+% \begin{findingbox}{Finding2: Match Progression Direction to Student Capacity and Task Difficulty}
+% \ours stabilizes training dynamics for both small and large models, but in different ways: rescuing small models from KL collapse, and improving training efficiency for larger ones. The choice between B2F and F2B should be guided by student capacity and task difficulty---F2B for weaker students, B2F for stronger students and harder tasks.
+% \end{findingbox}
+
+
+\subsection{$\mathbf{Q3}$: Robustness, Sensitivity, and Efficiency Analysis of \ours}
+\label{sec: ablation}
+
+\textbf{Curriculum’s Growth Rate $\eta$ Ablation.}
+Table~\ref{tab:cross_benchmark} reports the effect of varying the curriculum’s growth rate $\eta \in \{2, 4, 6\}$ across different benchmarks. 
+Performance remains consistently stronger than vanilla OPD across settings, with less than 2\% variation in success rate, demonstrating that \ours-F2B/B2F is not sensitive to the specific choice of $\eta$. 
+This robustness makes \ours easy to deploy in practice without extensive hyperparameter tuning.
+Nonetheless, as shown in Figure~\ref{fig: kl2}, a larger $\eta$ leads to more stable KL divergence during training, as the student spends more iterations mastering the current trajectory depth before the curriculum advances to longer horizons. 
+In practice, we recommend starting with a small $\eta$ to allow the curriculum to progress quickly in the early stages, and increasing $\eta$ if the KL divergence instability during training is observed.
+
+% TODO this doesnot holds
+\textbf{Domain-Specific \textit{vs.} Larger Teacher.}
+Comparing Table~\ref{tab:main_alfworld} and Table~\ref{tab:cross_benchmark}, we find that teacher quality strongly affects the upper bound of \ours.
+In Table~\ref{tab:main_alfworld}, the teacher is a GRPO-tuned Qwen2.5-7B on ALFWorld, reaching 85.71\% success rate. Under this setting, \ours-B2F with the same 7B backbone even slightly surpasses the teacher by 0.7 points.
+In Table~\ref{tab:cross_benchmark}, the teacher is Qwen3-30B-A3B-Instruct, a general model with weaker performance on the target domain. In this case, both vanilla OPD and \ours fail to exceed the teacher, with about a 2-point gap.
+This suggests that the teacher’s performance on the target domain matters more than model scale alone in enabling student improvement.
+% This shows that \textbf{a domain-adapted teacher is more useful than a larger general one, and can better enable student improvement.}
+
+\begin{wrapfigure}{r}{0.45\textwidth} % {r} 表示靠右，宽度为 0.35\textwidth
+\centering
+\includegraphics[width=0.45\textwidth]{figure/time.pdf} % 图像宽度通常比容器宽度小一些
+\vspace{-2em}
+\caption{\textbf{Training time comparison}.}
+% \vspace{-1em}
+\label{fig:time}
+
+\end{wrapfigure}
+
+\textbf{\ours is computationally efficient.}
+Figure~\ref{fig:time} compares the total training cost of \ours and vanilla OPD on ALFWorld and ScienceWorld.
+On both benchmarks, \ours-F2B and \ours-B2F reduce total training time by nearly 32\% compared to vanilla OPD. 
+This gain comes from the step-based curriculum in \ours: early in training, the student takes fewer steps, producing shorter trajectories and faster data collection.
+Notably, \ours-F2B is more efficient than \ours-B2F.
+% As shown in Figure~\ref{fig:rounds_training}, \ours-F2B uses fewer action rounds than \ours-B2F, and both require fewer steps than vanilla OPD.
+This is because \ours-F2B limits the maximum interaction steps to $k$, while \ours-B2F, though starting from intermediate states, still leads the student to take extra exploratory actions, producing longer trajectories.
+Figure~\ref{fig:rounds_training} further verifies that \ours-F2B uses fewer rollout action steps than \ours-B2F, and both require fewer steps than vanilla OPD.
+% Vanilla OPD requires an average of 9.6$\times$8 GPU hours to complete training, whereas \ours(B2F) reduces this to 8.55$\times$8 GPU hours saving approximately 8 GPU hours in total.
+% \ours(F2B) achieves even greater efficiency at 6.6$\times$8 GPU hours, yielding savings of 24 GPU hours(3$\times$8). 
+% This efficiency gain stems from TCOD's progressive curriculum: in early training stages, the student rolls out fewer steps, producing shorter trajectories and faster data collection. 
+% The curriculum therefore not only stabilizes training but also reduces overall computational overhead.
+% 9h 41m 42s
+
+% \begin{findingbox}{Finding3: \ours is Robust and Lightweight}
+% \ours is insensitive to the choice of pacing factor $\eta$, requiring minimal hyperparameter tuning. Furthermore, the progressive curriculum reduces training time by 8--16 GPU hours compared to vanilla OPD, introducing no additional computational burden in practice.
+% \end{findingbox}
+
+% \begin{table*}[t]
+% \centering
+% \caption{\textbf{Main Results of \ours.} We report Success Rate (\%), average Action Rounds on ALFworld. Results are evaluated on validation seen (same envs with train), validation unseen (different envs from train), and train hard (tasks where the teacher fails pass@10).}
+% \label{tab:main_alfworld}
+% \resizebox{\linewidth}{!}{
+% \begin{tabular}{lccccccdan}
+% \toprule
+% \multirow{2}{*}{\textbf{Method}}
+% & \multicolumn{2}{c}{\textbf{Valid Seen}}
+% & \multicolumn{2}{c}{\textbf{Valid Unseen}}
+% & \multicolumn{2}{c}{\textbf{Train Hard}} \\
+% \cmidrule(lr){2-3} \cmidrule(lr){4-5} \cmidrule(lr){6-7}
+% & \textbf{SR} $\uparrow$ & \textbf{Rounds} $\downarrow$
+% & \textbf{SR} $\uparrow$ & \textbf{Rounds} $\downarrow$
+% & \textbf{SR} $\uparrow$ & \textbf{Rounds} $\downarrow$ \\
+% \midrule
+% % zero-shot     & -- & -- & -- & -- & -- & -- \\
+% % SFT                  & -- & -- & -- & -- & -- & -- \\
+% % GRPO                 & -- & -- & -- & -- & -- & -- \\
+% Qwen2.5-7B-RL (Teacher) & 85.71 & 10.61 & 76.87 & 13.06  & 6.61 & 27.31 \\
+% % 82.86， 76.12， 16.53
+% \midrule
+% Qwen2.5-3B & \multicolumn{4}{c}{} \\
+% zero-short & 7.86 & 28.73 & 2.24 & 29.63 & 0.83 & 29.88\\
+% SFT                  & 32.14 & 22.85 & 25.37 & 24.16 & 4.96 & 29.12 \\
+% Vanilla OPD          & 65.72 & 14.73 & 60.45 & 16.21 & 10.74 & 28.64 \\
+% % off-pd \\
+% \midrule
+% \ours~(B2F)   & 77.86 & 12.57 & 70.90 & 14.56 & 13.22 & 28.16 \\
+% \ours~(F2B)  & 81.43 & 11.76 & 79.19 & 12.47 & 9.92 & 28.57 \\
+% % & 0.88 & 9.94  & 0.84 & 9.8  & 0.16 & 26.1
+% % \ours~(B2F, Adaptive)& -- & -- & -- & -- & -- & -- \\
+% % \ours~(F2B, Adaptive)& -- & -- & -- & -- & -- & -- \\
+% \midrule
+% Qwen2.5-7B & \multicolumn{4}{c}{} \\
+% zero-short  & 9.29 & 28.34 & 8.96 & 28.46 & 1.65 & 29.77 \\
+% SFT                  & 54.29 & 18.92 & 48.73 & 20.11 & 8.26 & 28.73 \\
+% % % GRPO                 & -- & -- & -- & -- & -- & -- \\
+% % off-pd \\
+% Vanilla OPD          & 75.37 & 13.18 & 72.14 & 13.37 & 13.22 & 27.89 \\
+% \midrule
+% \ours~(B2F)    & 86.43 &  11.06 & 77.61 & 13.16 & 20.66 & 27.07\\
+
+% % & 0.85 & 10.68 & 0.85 & 10.3 & 0.18 & 25.8
+% \ours~(F2B)  & 82.14 & 13.22 & 76.12 & 13.22 & 18.18 & 27.37 \\
+% % \ours~(B2F, Adaptive)& -- & -- & -- & -- & -- & -- \\
+% % \ours~(F2B, Adaptive)& -- & -- & -- & -- & -- & -- \\
+% \bottomrule
+% \end{tabular}
+% }
+% \end{table*}
+
+
+
+% \begin{table}[t]
+% \centering
+% \caption{\textbf{Performance Across Benchmarks and Teacher-Student Pairs.} We report success rate (\%) on validation sets. The task difficulty monotonically increases from ALFWorld to WebShop, and then to ScienceWorld. Results show POPD's effectiveness: in 1.7B models, it prevents the severe policy collapse observed in vanilla OPD; in 4B models, it provides the crucial final push to solidly marginalize the strong vanilla baseline, allowing the student to tightly saturate the Teacher's upper bound.}
+% \label{tab:cross_benchmark}
+% \begin{tabular}{lcccc}
+% \toprule
+% \textbf{Student} & \textbf{WebShop} & \textbf{ALFWorld} & \textbf{ScienceWorld} & \textbf{Avg} \\
+
+% \midrule
+% \textit{Qwen3-30b (Teacher)} & 32.84 & 39.57 & 18.42 & 30.28 \\
+% \midrule
+% Qwen3-1.7B & \multicolumn{4}{c}{} \\
+% vanilla OPD & 0.14 & 0.32 & 0.05 & 0.17 \\
+% \ours(B2F) & 20.54 & 24.55 & 10.82 & 18.64 \\
+% \ours(F2B) & 21.15 & 24.12 & 10.45 & 18.57 \\
+% \midrule
+% Qwen3-4B & \multicolumn{4}{c}{} \\
+% vanilla OPD & 30.12 & 36.85 & 15.95 & 27.64 \\
+% \ours(B2F) & 32.15 & 38.62 & 17.46 & 29.41 \\
+% \ours(F2B) & 31.81 & 38.95 & 17.85 & 29.54 \\
+% \bottomrule
+% \end{tabular}
+% \end{table}
+
+
+
+% \begin{findingbox}{Finding 2: teacher-student matching more important than the strong teacher.}
+% Effective corrective distillation requires a minimum representational capacity ( $>$3B parameters). Below this threshold, models fail to internalize complex recovery logic, establishing a hard performance bottleneck for agentic distillation.
+% \end{findingbox}
+
+% \begin{findingbox}{Finding 3: The "Brevity Hack" under Token-Level Constraints}
+% Naive token-level KL constraints incentivize "reward hacking," where models output overly brief, unproductive sequences to evade divergence penalties. True agentic alignment requires trajectory-aware evaluation that distinguishes between efficient exploration and brevity-based cheating.
+% \end{findingbox}
+
+
+% Table~\ref{tab:main_alfworld} presents detailed results on ALFWorld across three difficulty levels. Key observations:
+
+% \textbf{Strong performance on seen tasks.} POPD variants achieve substantial improvements over vanilla OPD on validation seen tasks, with F2B+Adaptive reaching the highest success rate while maintaining low KL divergence and fewer environment rounds.
+
+% \textbf{Superior generalization to unseen tasks.} The gap between POPD and baselines widens on validation unseen tasks, demonstrating that progressive curriculum learning enhances generalization beyond the training distribution. SFT shows severe performance degradation on unseen tasks due to exposure bias.
+
+% \textbf{Robust on hard tasks.} Even on train hard tasks (where the teacher itself struggles), POPD maintains reasonable performance, while vanilla OPD often collapses due to training instability.
+
+
+% \begin{table}[t]
+% \centering
+% \caption{\textbf{Performance Across Benchmarks and Teacher-Student Pairs.} We report success rate (\%) on validation sets. Results show POPD's effectiveness generalizes across different model combinations and task domains.}
+% \label{tab:cross_benchmark}
+% \begin{tabular}{lcccc}
+% \toprule
+% \textbf{Student} & \textbf{WebShop} & \textbf{ALFWorld} & \textbf{ScienceWorld} & \textbf{Avg} \\
+% % \midrule
+% % \multicolumn{4}{l}{\textit{Qwen2.5-7b-RL (Teacher)}} \\
+% % \midrule
+% % Qwen2.5-0.5B      & -- & -- & -- \\
+% % Qwen2.5-0.5B (\ours)     & -- & -- & -- \\
+% % Qwen2.5-0.5B (\ours)     & -- & -- & -- \\
+% % \midrule
+% % Qwen2.5-1.5B      & -- & -- & -- \\
+% % Qwen2.5-1.5B (\ours)     & -- & -- & -- \\
+% % Qwen2.5-1.5B (\ours)    & -- & -- & -- \\
+% % \midrule
+% % Qwen2.5-3B      & -- & -- & -- \\
+% % Qwen2.5-3B (\ours)     & -- & -- & -- \\
+% % Qwen2.5-3B (\ours)     & -- & -- & -- \\
+% % \midrule
+% % Qwen2.5-7B  & -- & -- & -- \\
+% % Qwen2.5-7B (\ours) & -- & -- & -- \\
+% % Qwen2.5-7B (\ours) & -- & -- & -- \\
+% % % Qwen2.5-3B (\ours)& -- & -- & -- \\
+% \midrule
+% \textit{Qwen3-30b (Teacher)} & 20.84 & 54.67 & 34.52 & 36.68 \\
+% \midrule
+% % Qwen2.5-3B        & -- & -- & -- \\
+% % Qwen2.5-7B   & -- & -- & -- \\
+% % Qwen3-0.6B      & -- & -- & -- \\
+% % SFT      & -- & -- & -- \\
+% % RL      & -- & -- & -- \\
+% % vanilla OPD \\
+% % \ours B2F    & -- & -- & -- \\
+% % \ours F2B   & -- & -- & -- \\
+% % \midrule
+% Qwen3-1.7B      & 0 & 0 & 0 \\
+% % SFT      & 50 & 50 & 50 \\
+% GRPO      & 71.34 & 60.59 & 35.89\\
+% vanilla OPD & 0 & 0 & 0\\
+% \ours(B2F)    & 20 & 10 & 5 \\
+% \ours(F2B)   & 20 & 10 & 5 \\
+% \midrule
+% Qwen3-4B   & 0 & 0 & 0 \\
+% % SFT      & 50 & 50 & 50 \\
+% GRPO      & 88.60 & 73.45  & 60.56 \\
+% vanilla OPD & 80 & 80 & 80 \\
+% \ours(B2F)    & 80 & 80 & 80 \\
+% \ours(F2B)   & 80 & 80 & 80 \\
+% % \midrule
+% % \multicolumn{5}{l}{\textit{Qwen-Max as Teacher}} \\
+% % \midrule
+% % Qwen-Max & Qwen2.5-3B (SFT)   & -- & -- & -- \\
+% % Qwen-Max & Qwen2.5-3B (Vanilla OPD) & -- & -- & -- \\
+% % Qwen-Max & Qwen2.5-3B (\ours) & -- & -- & -- \\
+% \bottomrule
+% \end{tabular}
+% \end{table}
+
+
+% Table~\ref{tab:cross_benchmark} demonstrates that POPD's benefits are consistent across different teacher-student combinations and task domains. The relative improvement over vanilla OPD is maintained regardless of the teacher model quality or student model capacity.
+
+% \subsection{Training Dynamics and Analysis}
+
+% To understand why POPD outperforms baselines, we analyze the training dynamics across multiple dimensions. Figure~\ref{fig:training_dynamics_main} shows the evolution of key metrics during training.
+
+
+% \paragraph{Stable and Efficient Learning.} Figure~\ref{fig:sr_training} shows that POPD variants converge faster and more stably than vanilla OPD. The progressive curriculum prevents the catastrophic failures that plague vanilla OPD, where sudden KL spikes (Figure~\ref{fig:kl_training}) lead to performance collapse.
+
+% \paragraph{KL Divergence Control.} The KL curves reveal a critical advantage of POPD: by gradually expanding the student's control region, we maintain KL divergence within a manageable range. Vanilla OPD's KL spikes often exceed 10× the baseline, triggering gradient explosions and training instability.
+
+% \paragraph{Efficiency Gains.} Figure~\ref{fig:rounds_training} demonstrates that POPD not only improves success rate but also learns more efficient policies, requiring fewer environment interactions to complete tasks.
+
+% \subsection{Detailed Analysis}
+
+% \begin{figure*}[t]
+% \centering
+% \begin{subfigure}[b]{0.32\textwidth}
+% \centering
+% \includegraphics[width=\textwidth]{figures/kl_per_step_heatmap.pdf}
+% \caption{Per-Step KL Evolution}
+% \label{fig:kl_evolution}
+% \end{subfigure}
+% \hfill
+% \begin{subfigure}[b]{0.32\textwidth}
+% \centering
+% \includegraphics[width=\textwidth]{figures/curriculum_progression.pdf}
+% \caption{Curriculum Progression}
+% \label{fig:curriculum_prog}
+% \end{subfigure}
+% \hfill
+% \begin{subfigure}[b]{0.32\textwidth}
+% \centering
+% \includegraphics[width=\textwidth]{figures/reward_density.pdf}
+% \caption{B2F vs F2B Trade-offs}
+% \label{fig:reward_dist}
+% \end{subfigure}
+
+% \caption{\textbf{Detailed Analysis of POPD Mechanisms.} (a) Heatmap of per-step KL divergence shows that B2F progressively reduces KL from terminal steps backward, while F2B stabilizes early steps first. (b) Adaptive pacing dynamically adjusts curriculum speed with rollbacks preventing distillation shock. (c) B2F achieves higher reward density but higher distribution shift; F2B prioritizes distributional alignment.}
+% \label{fig:analysis}
+% \end{figure*}
+
+% \section{Qualitative Examples}
+
+% \begin{table*}[t]
+% \centering
+% \caption{\textbf{Qualitative Trajectory Comparison on ALFWorld.} We show a representative example where the student model deviates from the teacher trajectory. SFT fails immediately upon deviation, vanilla OPD struggles to recover, while \ours~(F2B) successfully adapts and completes the task.}
+% \label{tab:qualitative}
+% \small
+% \begin{tabular}{p{0.15\linewidth}p{0.8\linewidth}}
+% \toprule
+% \textbf{Method} & \textbf{Trajectory} \\
+% \midrule
+% \textbf{Teacher} &
+% \texttt{[Step 1]} go to cabinet 1 $\rightarrow$
+% \texttt{[Step 2]} open cabinet 1 $\rightarrow$
+% \texttt{[Step 3]} take mug 1 from cabinet 1 $\rightarrow$
+% \texttt{[Step 4]} go to coffeemachine 1 $\rightarrow$
+% \texttt{[Step 5]} put mug 1 in coffeemachine 1 \\
+% \midrule
+% \textbf{SFT} &
+% \texttt{[Step 1]} go to cabinet 1 $\rightarrow$
+% \texttt{[Step 2]} \textcolor{red}{take mug 1 from cabinet 1} (fails: cabinet not open) $\rightarrow$ \textbf{Task Failed} \\
+% \midrule
+% \textbf{Vanilla OPD} &
+% \texttt{[Step 1]} go to cabinet 1 $\rightarrow$
+% \texttt{[Step 2]} \textcolor{red}{go to drawer 1} (deviation) $\rightarrow$
+% \texttt{[Step 3]} \textcolor{red}{open drawer 1} $\rightarrow$
+% \texttt{[Step 4]} \textcolor{red}{examine drawer 1} (stuck in exploration) $\rightarrow$ \textbf{Task Failed} \\
+% \midrule
+% \textbf{\ours~(F2B)} &
+% \texttt{[Step 1]} go to cabinet 1 $\rightarrow$
+% \texttt{[Step 2]} \textcolor{blue}{go to cabinet 2} (deviation) $\rightarrow$
+% \texttt{[Step 3]} \textcolor{blue}{open cabinet 2} $\rightarrow$
+% \texttt{[Step 4]} \textcolor{blue}{take mug 2 from cabinet 2} (alternative path) $\rightarrow$
+% \texttt{[Step 5]} go to coffeemachine 1 $\rightarrow$
+% \texttt{[Step 6]} put mug 2 in coffeemachine 1 $\rightarrow$ \textbf{Task Succeeded} \\
+% \bottomrule
+% \end{tabular}
+% \end{table*}
+
+% Table~\ref{tab:qualitative} illustrates a concrete example where \ours~(F2B) demonstrates robust recovery capability. When the student deviates at Step 2, it successfully identifies an alternative path (using cabinet 2 instead of cabinet 1) and completes the task, whereas SFT and vanilla OPD both fail to recover.
+
+\section{Conclusion}
+
+In this work, we identify a fundamental failure mode of vanilla OPD in multi-turn agents, termed Trajectory-Level KL Instability, where compounding errors across turns lead to escalating KL divergence and unreliable teacher supervision. 
+Building on this insight, we propose \ours, a simple and principled framework that controls the trajectory depth exposed to the student during training, instantiated through two practical variants: Forward-to-Backward (F2B) and Backward-to-Forward (B2F).
+Extensive experiments demonstrate that \ours consistently stabilizes training, recovers small models from collapse, improves success rates for larger models, and reduces total training time compared to vanilla OPD.
+Beyond practical improvements, \ours opens new directions for curriculum-guided training of long-horizon autonomous agents.
+% reveals that aligning the student's exposed control horizon with its current learning capacity is both necessary and sufficient to unlock stable multi-turn on-policy distillation, 
+
+% \textbf{Limitations and Future Work.} While our approach shows promising results, several directions warrant further investigation: (1) extending POPD to even longer-horizon tasks (e.g., 50+ steps), (2) exploring hybrid progression strategies that dynamically switch between B2F and F2B, and (3) investigating the applicability of our framework to other sequential decision-making domains beyond interactive agents.
+
+% \section*{Acknowledgments}
+% We thank the anonymous reviewers for their valuable feedback. This work was supported by [funding sources to be added].
+
+\bibliographystyle{colm2026_conference}
+\bibliography{colm2026_conference}
+\input{sections/app}
+
+\end{document}
+
+
+\subsection{Challenges of Vanilla OPD in Multi-Turn Agent}
+While vanilla OPD is effective in single-turn tasks, applying it directly to long-horizon multi-turn agents introduces three compounding failure modes, which we identify through a pilot study on ALFWorld.
+
+% Applying vanilla OPD to multi-turn agents introduces two critical challenges:
+
+% \paragraph{Compounding Errors and Sparse Rewards.} In long-horizon tasks, a single suboptimal action in early turns can lead the agent into unfamiliar states from which it cannot recover. Without teacher guidance, the student rarely reaches successful terminal states, resulting in sparse learning signals. This "cold-start" problem severely hampers optimization, as the student receives little feedback on whether its reasoning and actions are correct.
+
+% \begin{findingbox}{Finding 1: Single-turn RL may not be directly adapted to Multi-turn agent RL}
+% Vanilla adaptations from single-turn methods like PPO and GRPO achieve early gains in agent settings but often collapse. A critic in PPO may delay instability, but would not prevent reasoning degradation, highlighting the need for specialized stabilization in agent settings.
+% \end{findingbox}
+
+
+% \paragraph{Severe KL Divergence Spikes.} When the student explores out-of-distribution states, the KL divergence between teacher and student policies can spike dramatically. Unlike single-turn tasks where each example contributes one KL term, a single multi-turn episode contributes $T$ KL terms (one per turn). Early in training, when the student's policy is far from the teacher, these accumulated KL values can be orders of magnitude larger than typical supervised fine-tuning losses, leading to optimization instability, gradient explosion, and catastrophic forgetting.
+
+% We conduct a pilot study on the ALFWorld benchmark to dissect the failure modes of standard On-Policy Distillation (OPD) in multi-turn environments. Our empirical observations reveal three critical insights:
+
+% Finding 1: Horizon-Induced KL Escalation
+In multi-turn interactions, the student agent typically follows the teacher’s distribution during initial steps, resulting in negligible KL divergence. However, as the interaction progresses, minor action deviations accumulate, leading to compounding errors. By the time the trajectory reaches later stages, the student is often pushed into severe out-of-distribution (OOD) states. The teacher's subsequent corrective actions appear counter-intuitive to the student, causing step-wise KL divergence to escalate exponentially. This surge creates an overwhelming gradient signal that triggers catastrophic forgetting, erasing the agent's foundational planning capabilities built in the early stages of training.
+
+\begin{findingbox}{Finding 1: Horizon-Induced KL Escalation in small llm}
+Long-horizon multi-turn tasks cause KL divergence to escalate exponentially due to compounding errors. Unconstrained OPD suffers from catastrophic forgetting, necessitating curriculum-based exploration to control the depth of training.
+\end{findingbox}
+
+% Finding 2: The Representation Floor of Corrective Distillation
+Unlike traditional supervised fine-tuning, On-Policy Distillation requires the student to master "corrective reasoning"—understanding the rationale behind a teacher’s recovery action in a suboptimal state. Our experiments reveal a strict "representation floor" for effective distillation. Models with insufficient parameter counts (e.g., $\leq$1.5B) lack the internal world knowledge and logical capacity to digest complex OOD corrective signals, leading to training collapse. Consequently, we identify that robust multi-turn distillation is inherently limited by the student’s model capacity, requiring a minimum baseline of general reasoning capabilities to achieve meaningful alignment.
+
+\begin{findingbox}{Finding 2: teacher-student matching more important than the strong teacher.}
+Effective corrective distillation requires a minimum representational capacity ( $>$3B parameters). Below this threshold, models fail to internalize complex recovery logic, establishing a hard performance bottleneck for agentic distillation.
+\end{findingbox}
+
+% Finding 3: The "Brevity Hack" under Token-Level Constraints
+To mitigate the instability described in Finding 1, one might intuitively apply progress-based curriculum learning. However, we observe that if the training is constrained solely by token-level KL divergence, the model discovers a "reward-hacking" shortcut. When faced with complex states, the student avoids the high KL penalties associated with long, complex corrective sequences by generating extremely short, invalid actions or premature terminal tokens. While this effectively flattens the KL curve, it leads to a collapse in exploration and task completion performance. This "brevity hack" demonstrates that simple token-level constraints are insufficient and highlights the need for trajectory-aware mechanisms that penalize superficial performance metrics.
+
+\begin{findingbox}{Finding 3: The "Brevity Hack" under Token-Level Constraints}
+Naive token-level KL constraints incentivize "reward hacking," where models output overly brief, unproductive sequences to evade divergence penalties. True agentic alignment requires trajectory-aware evaluation that distinguishes between efficient exploration and brevity-based cheating.
+\end{findingbox}
+
+
+- kl up, then down
+- student output, teacher not familiar
+- distribution not familiar
+- constraints on small/few states
+联系method
+
+
+\begin{figure}[t]
+\centering
+% \begin{subfigure}[b]{0.32\textwidth}
+% \centering
+% \includegraphics[width=\textwidth]{figure/plot/alfworld_kl_comparison.pdf}
+% \caption{Response Length Converge}
+% \label{fig:app gradient_norm}
+% \end{subfigure}
+% \hfill
+\begin{subfigure}[b]{0.32\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figure/plot/exp2_rollout_kl_divergence_mean.pdf}
+\caption{KL Converge}
+\label{fig:app per_turn_kl}
+\end{subfigure}
+\hfill
+\begin{subfigure}[b]{0.32\textwidth}
+\centering
+\includegraphics[width=\textwidth]{figure/plot/exp2_rollout_env_done_mean.pdf}
+\caption{SR Increase}
+\label{fig:app gradient_norm}
+\end{subfigure}
+\caption{\textbf{Matching of Vanilla OPD in Multi-Turn Settings.} 
+(a)(b) Small LLM collapse under the opd, no matter how big/good teacher it is.
+(c)(d) The suitable for the teacher student match, the rl 7b teacher is best for teacher 7b model, while the strong models, no matter 7b or 30b, teach worse.
+% (a) Vanilla OPD exhibits severe KL divergence spikes (red) that destabilize training, while SFT maintains stable but low KL (blue). (b) These spikes correlate with success rate collapse, where the student fails to complete tasks. (c) Multi-turn episodes accumulate KL across $T$ turns, amplifying the divergence. (d) High KL leads to gradient explosion, causing optimization instability.
+}
+\label{fig:app challenges}
+\end{figure}
+
+
+
+
+
+- example.
+- env done.
+
+
+
+
+\section{Complete Training Algorithm}
+\label{appendix:algorithm}
+
+Algorithm~\ref{alg:popd} presents the complete POPD training procedure, integrating progression direction, pacing strategy, and the implementation details described in Section~\ref{sec:implementation}.
+
+\begin{algorithm}[h]
+\caption{Progressive On-Policy Distillation (POPD)}
+\label{alg:popd}
+\KwIn{Teacher policy $\pi_\phi$, Initial student policy $\pi_{\theta_0}$, Progression direction $\in \{$B2F, F2B$\}$, Pacing strategy $\in \{$Fixed, Adaptive$\}$, Max trajectory length $T$, Training iterations $M$}
+\KwOut{Optimized student policy $\pi_\theta$}
+
+Initialize curriculum parameter $k \leftarrow 1$ \;
+\If{Pacing strategy is Adaptive}{
+    Initialize EMA: $\bar{\mathcal{D}}^{(EMA)}_0 \leftarrow 0$ \;
+}
+
+\For{$N = 0$ \KwTo $M-1$}{
+    \tcp{Construct mixed policy based on progression direction}
+    \If{Direction is B2F}{
+        $\mathcal{C}^{(k)} \leftarrow \{1, \dots, T-k\}$, $\mathcal{L}^{(k)} \leftarrow \{T-k+1, \dots, T\}$ \;
+    }
+    \Else{
+        $\mathcal{C}^{(k)} \leftarrow \{k+1, \dots, T\}$, $\mathcal{L}^{(k)} \leftarrow \{1, \dots, k\}$ \;
+    }
+
+    \tcp{On-policy trajectory collection (asynchronous)}
+    Sample trajectory $\tau = (s_0, a_0, \dots, s_T)$ using $\pi_{mix}^{(k)}$ from replay buffer \;
+
+    \tcp{Staleness control}
+    \If{trajectory version is too stale}{
+        Skip this trajectory and sample a new one \;
+    }
+
+    \tcp{Optimization step with chunking}
+    Split $\tau$ into chunks of length $L_{\text{chunk}}$ \;
+    \For{each chunk $\tau_c$}{
+        Compute loss: $\mathcal{L}(\theta) = \sum_{t \in \mathcal{L}^{(k)} \cap \tau_c} \mathcal{D}_{KL}(\pi_\phi(a_t|s_t) \parallel \pi_\theta(a_t|s_t))$ \;
+        Update $\theta$ via gradient descent with dynamic batch size \;
+    }
+
+    \tcp{Update curriculum parameter based on pacing strategy}
+    \If{Pacing strategy is Fixed}{
+        $k \leftarrow \min(T, \lfloor N/\eta \rfloor + 1)$ \;
+    }
+    \Else{
+        Update EMA: $\bar{\mathcal{D}}^{(EMA)}_{N} \leftarrow \gamma \bar{\mathcal{D}}^{(EMA)}_{N-1} + (1-\gamma) \mathcal{L}(\theta)$ \;
+        Compute ratio: $r_N \leftarrow \mathcal{L}(\theta) / \bar{\mathcal{D}}^{(EMA)}_{N-1}$ \;
+        \If{$r_N < \rho_{expand}$}{
+            $k \leftarrow \min(k+1, T)$ \tcp*{Expand}
+        }
+        \ElseIf{$r_N > \rho_{rollback}$}{
+            $k \leftarrow \max(k-1, 1)$ \tcp*{Rollback}
+        }
+    }
+}
+\Return $\pi_\theta$ \;
+\end{algorithm}
+
+\section{Additional Experimental Details}
+
+\subsection{Hyperparameters}
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Hyperparameters for POPD Training.}}
+\label{tab:hyperparams}
+\begin{tabular}{lc}
+\toprule
+\textbf{Hyperparameter} & \textbf{Value} \\
+\midrule
+Learning rate & 5e-6 \\
+Batch size & 32 \\
+Max trajectory length $T$ & 15 (WebShop), 20 (ALFWorld), 25 (ScienceWorld) \\
+Pacing factor $\eta$ (fixed) & 100 \\
+EMA decay rate $\gamma$ & 0.95 \\
+Expansion threshold $\rho_{expand}$ & 0.8 \\
+Rollback threshold $\rho_{rollback}$ & 1.5 \\
+Training iterations & 10,000 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Computational Resources}
+
+All experiments were conducted on 8$\times$ NVIDIA A100 (80GB) GPUs. Training time for each method: approximately 12 hours for WebShop, 18 hours for ALFWorld, and 24 hours for ScienceWorld.
+
+\subsection{Additional Ablation: Loss Window Strategies}
+
+\begin{table}[h]
+\centering
+\caption{\textbf{Ablation on Loss Window Strategies.} We compare computing loss only on student-controlled steps (default) vs. computing loss on all steps.}
+\label{tab:loss_window_ablation}
+\begin{tabular}{lcc}
+\toprule
+\textbf{Loss Window} & \textbf{B2F Success Rate} & \textbf{F2B Success Rate} \\
+\midrule
+Student steps only & \textbf{68.3} & \textbf{71.2} \\
+All steps & 62.1 & 65.7 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Table~\ref{tab:loss_window_ablation} shows that computing loss only on student-controlled steps (as described in Algorithm~\ref{alg:popd}) yields better performance, as it focuses the optimization signal on the regions where the student is actively learning.
+
+\end{document}
+
+\end{document}
